@@ -1,0 +1,23 @@
+{
+  "name": "pips-island",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.8.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.3",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}
