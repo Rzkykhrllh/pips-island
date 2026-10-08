@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Spherical, Vector3 } from 'three'
-import { ISLAND, heightAt, smoothstep } from './terrain'
+import { ISLAND, groundAt, smoothstep } from './terrain'
 import { markerU, progressToU, track, trailPoint } from './track'
 import { SPIRES } from './layout'
 import { world } from '../store'
@@ -65,11 +65,11 @@ const peak = trailPoint(markerU.peak)
 // Summit: from the open south-east side, so the cat stands against the spires and the sunset
 const OUTRO_DIR = new Vector3(0.75, 0, 0.66).normalize()
 
-const spireBases = SPIRES.map((s) => heightAt(s.x, s.z) - 1.5)
+const spireBases = SPIRES.map((s) => groundAt(s.x, s.z) - 1.5)
 
 // Push a camera position out of the ground and out of any spire
 function keepClear(pos) {
-  pos.y = Math.max(pos.y, heightAt(pos.x, pos.z) + 1.6)
+  pos.y = Math.max(pos.y, groundAt(pos.x, pos.z) + 1.6)
   SPIRES.forEach((s, i) => {
     const t = (pos.y - spireBases[i]) / s.height
     if (t >= 1) return
@@ -92,7 +92,7 @@ function keepLineOfSight(pos, target) {
     const x = pos.x + (target.x - pos.x) * t
     const z = pos.z + (target.z - pos.z) * t
     const y = pos.y + (target.y - pos.y) * t
-    const ground = heightAt(x, z) + 0.6
+    const ground = groundAt(x, z) + 0.6
     if (ground > y) pos.y += (ground - y) / (1 - t)
   }
   return pos

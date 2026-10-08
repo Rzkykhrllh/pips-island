@@ -60,6 +60,14 @@ export const HUTS = [
   { x: 47, z: -1, rot: -0.8, band: '#e0a020', size: 0.9 },
 ]
 export const TOWER = { x: 37, z: 11 }
+export const CAMPFIRE = { x: 41, z: 4 }
+// A plank jetty off the village's east beach, with a boat tied at the end
+export const DOCK = { x0: 57, x1: 68, z: 7, y: 0.75 }
+export const BOAT = { x: 66.5, z: 9.6 }
+export const POND = { ...ISLAND.pond, water: 2.1 }
+// Old stone temple ruins on the west lowland: a nod to the game's Fire Temple
+export const RUINS = { x: -26, z: 10, rot: 0.5 }
+export const BAMBOO = { x: -16, z: 31, radius: 4 }
 export const TOTEM = { x: 10.5, z: 14 }
 
 // Palisade of sharpened logs around the west side of the village
@@ -83,6 +91,11 @@ export function isClear(x, z, margin = 1) {
   for (const h of HUTS) if ((h.x - x) ** 2 + (h.z - z) ** 2 < (2.6 + margin) ** 2) return false
   if ((TOWER.x - x) ** 2 + (TOWER.z - z) ** 2 < (2 + margin) ** 2) return false
   if ((TOTEM.x - x) ** 2 + (TOTEM.z - z) ** 2 < (1.6 + margin) ** 2) return false
+  if ((CAMPFIRE.x - x) ** 2 + (CAMPFIRE.z - z) ** 2 < (2.2 + margin) ** 2) return false
+  if ((POND.x - x) ** 2 + (POND.z - z) ** 2 < (POND.radius * 1.15 + margin) ** 2) return false
+  if ((RUINS.x - x) ** 2 + (RUINS.z - z) ** 2 < (7 + margin) ** 2) return false
+  if ((BAMBOO.x - x) ** 2 + (BAMBOO.z - z) ** 2 < (BAMBOO.radius + margin) ** 2) return false
+  if (x > DOCK.x0 - 3 && Math.abs(z - DOCK.z) < 2 + margin) return false
   const dv = Math.hypot(x - VILLAGE.x, z - VILLAGE.z)
   if (Math.abs(dv - 13) < 0.8 + margin && x < VILLAGE.x + 4) return false
   for (const p of lavaPts) if ((p.x - x) ** 2 + (p.z - z) ** 2 < (2 + margin) ** 2) return false

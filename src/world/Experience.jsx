@@ -8,6 +8,8 @@ import Crates from './Crates'
 import Director, { CAMERA_START } from './Director'
 import Island from './Island'
 import Landmarks from './Landmarks'
+import Life from './Life'
+import Places from './Places'
 import Vegetation from './Vegetation'
 import { ORDER, PINNED, TIERS, createFpsWatch, guessTier } from './quality'
 import { CHARACTER } from '../sections'
@@ -51,9 +53,11 @@ export default function Experience() {
       <Atmosphere shadowMap={q.shadowMap} />
       <Island />
       <Landmarks />
+      <Places />
       <Vegetation />
       <Bridge />
       <Crates />
+      <Life />
       {/* If the cat's model can't load, Pip runs instead */}
       <ErrorBoundary
         fallback={

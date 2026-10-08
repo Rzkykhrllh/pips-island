@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { nudgeCamera, resetCamera, useUi } from '../store'
+import { setAmbience } from '../audio'
 import { STOPS } from '../sections'
 
 // Landing page for N. Usantara Island, the playable portfolio in web-3d-project.
@@ -60,6 +62,26 @@ function Hud() {
   )
 }
 
+// Ambient sound: off until asked for (browsers block audio before a click),
+// and quiet while the tab is hidden
+function SoundButton() {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    setAmbience(on)
+    const hidden = () => setAmbience(on && !document.hidden)
+    document.addEventListener('visibilitychange', hidden)
+    return () => document.removeEventListener('visibilitychange', hidden)
+  }, [on])
+  return (
+    <button type="button" onClick={() => setOn(!on)} aria-pressed={on} aria-label={on ? 'Mute island sounds' : 'Play island sounds'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9h4l5-4v14l-5-4H4z" />
+        {on ? <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /> : <path d="M17 9l5 6M22 9l-5 6" />}
+      </svg>
+    </button>
+  )
+}
+
 // Buttons for the same moves as drag and pinch, for keyboards and anyone who
 // doesn't think to drag the island
 function CameraButtons() {
@@ -68,7 +90,8 @@ function CameraButtons() {
   if (!ready) return null
   const turn = Math.PI / 6
   return (
-    <div className="hud-camera" role="group" aria-label="Camera">
+    <div className="hud-camera" role="group" aria-label="Camera and sound">
+      <SoundButton />
       <button type="button" onClick={() => nudgeCamera({ yaw: turn })} aria-label="Turn camera left">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 7H4V3M4.6 7a9 9 0 1 1-.9 7" />

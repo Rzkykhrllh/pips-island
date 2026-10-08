@@ -29,6 +29,7 @@ Pages, or an nginx container on your own server).
 ```
 src/
   App.jsx               scroll listener -> world.target (0..1); lazy-loads the 3D scene
+  audio.js              synthesised ambience (surf, wind, birds), toggled from the HUD
   store.js              shared per-frame state + tiny store for the UI (no three.js)
   sections.js           page sections / trail stops (no three.js)
   ui/Overlay.jsx        HTML sections, HUD, Play buttons
@@ -44,8 +45,12 @@ src/
     toon.js             shared toon ramp and outline material
     Island.jsx          terrain mesh (vertex colours) + ocean with shallow/deep colours
     Landmarks.jsx       rock spires, tiki face, waterfall, lava, huts, palisade, dashed trail path
+    Places.jsx          meadow pond, temple ruins, jetty and rowboat, campfire
+    Life.jsx            butterflies by day, fireflies at dusk
+    wind.js             shared wind sway for everything that grows
     Baked.jsx           folds static JSX props into one mesh (one draw call)
-    Vegetation.jsx      instanced palms, broadleaf trees, bushes, pink plants, rocks (seeded)
+    Vegetation.jsx      zoned planting: beach palms and shells, meadow grass and flowers,
+                        jungle ferns and mushrooms, bamboo, boulders (seeded, instanced)
     Crates.jsx          breakable crates with fruit
     Bridge.jsx          rope bridge over the gorge
     Cat.jsx             the default runner: rigged GLB, idle / walk / run / victory, spins through crates
@@ -73,6 +78,7 @@ the crate counter, which unlocks the feature list in the overlay.
 
 - **Island shape**: edit `ISLAND`, `shoreRadius` and `heightAt` in `world/terrain.js`.
 - **Landmarks**: positions in `world/layout.js` (trees keep clear of them automatically).
+- **Zones**: `ZONES` in `world/terrain.js` (meadow, jungle) steer ground colour and planting.
 - **Trail route**: edit the `add(ground(x, z))` points in `world/track.js`.
 - **Pacing**: `TIMELINE` in `track.js` and the section `--h` values in
   `ui/Overlay.jsx` work together. If you make a section taller, stretch the

@@ -1,12 +1,12 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
-import { groundAt, heightAt } from './terrain'
+import { groundAt } from './terrain'
 export { STOPS } from '../sections'
 
 // ---------------------------------------------------------------------------
 // The trail the runner follows. Scroll progress -> position on this curve.
 // ---------------------------------------------------------------------------
 
-const ground = (x, z) => new Vector3(x, heightAt(x, z), z)
+const ground = (x, z) => new Vector3(x, groundAt(x, z), z)
 
 export const BRIDGE = { x: 0, zStart: -8, zEnd: -18, sag: 0.6, width: 1.9 }
 

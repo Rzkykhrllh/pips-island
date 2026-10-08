@@ -16,7 +16,7 @@ import {
   Vector3,
 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { groundAt, heightAt } from './terrain'
+import { groundAt } from './terrain'
 import { STOPS, isOnBridge, markerU, progressToU, track, trailPoint } from './track'
 import {
   FACE_SPIRE,
@@ -40,7 +40,7 @@ import { world } from '../store'
 // down the west flank, a stilt village behind a palisade, and an orange dashed
 // trail with red stops.
 
-const Toon = (props) => <meshToonMaterial gradientMap={TOON_RAMP} {...props} />
+export const Toon = (props) => <meshToonMaterial gradientMap={TOON_RAMP} {...props} />
 
 // ---------------------------------------------------------------- spires
 
@@ -79,7 +79,7 @@ function Spires() {
   const geometry = useMemo(() => {
     const rand = mulberry32(21)
     const parts = [
-      ...SPIRES.map((s) => spireGeometry(s, rand, heightAt(s.x, s.z) - 1.5, s === FACE_SPIRE)),
+      ...SPIRES.map((s) => spireGeometry(s, rand, groundAt(s.x, s.z) - 1.5, s === FACE_SPIRE)),
       ...STACKS.map((s) => spireGeometry(s, rand, -3)),
     ]
     const merged = mergeGeometries(parts)
@@ -92,7 +92,7 @@ function Spires() {
     const rand = mulberry32(5)
     const out = []
     for (const s of [...SPIRES, ...STACKS]) {
-      const base = STACKS.includes(s) ? -3 : heightAt(s.x, s.z) - 1.5
+      const base = STACKS.includes(s) ? -3 : groundAt(s.x, s.z) - 1.5
       const n = 2 + Math.floor(rand() * 3)
       for (let i = 0; i < n; i++) {
         const t = 0.25 + rand() * 0.5
@@ -123,7 +123,7 @@ function Spires() {
 // A great stone face in the cliff, looking out over the gorge
 function TikiFace() {
   const s = FACE_SPIRE
-  const baseY = heightAt(s.x, s.z) - 1.5
+  const baseY = groundAt(s.x, s.z) - 1.5
   const h = 6.5
   const r = s.radius * (1 - h / s.height) - 0.15
   const yaw = Math.atan2(-0.6, 0.8) // toward the south-west, where the camera passes
@@ -244,7 +244,7 @@ function Flow({ points, width, lift, base, streak, edge, speed, scale }) {
 
 // Puffs that rise, grow and fade on a loop: spray under the waterfall, steam
 // where the lava meets the sea
-function Puffs({ at, count, color, rise, spread, size, period }) {
+export function Puffs({ at, count, color, rise, spread, size, period }) {
   const mesh = useRef()
   const seeds = useMemo(() => {
     const rand = mulberry32(count * 13 + Math.round(at.x))
@@ -306,7 +306,7 @@ function Lava() {
 // ---------------------------------------------------------------- village
 
 function Hut({ x, z, rot, band, size }) {
-  const y = heightAt(x, z)
+  const y = groundAt(x, z)
   return (
     <group position={[x, y, z]} rotation-y={rot} scale={size}>
       {[
@@ -349,7 +349,7 @@ function Hut({ x, z, rot, band, size }) {
 }
 
 function Tower() {
-  const y = heightAt(TOWER.x, TOWER.z)
+  const y = groundAt(TOWER.x, TOWER.z)
   return (
     <group position={[TOWER.x, y, TOWER.z]} rotation-y={0.4}>
       {[
@@ -380,7 +380,7 @@ function Palisade() {
     const rand = mulberry32(9)
     return PALISADE.map(({ x, z, a }) => {
       const h = 2 + rand() * 0.8
-      return { pos: [x, heightAt(x, z) + h / 2 - 0.3, z], scale: [1, h, 1], rot: [(rand() - 0.5) * 0.1, a, (rand() - 0.5) * 0.1] }
+      return { pos: [x, groundAt(x, z) + h / 2 - 0.3, z], scale: [1, h, 1], rot: [(rand() - 0.5) * 0.1, a, (rand() - 0.5) * 0.1] }
     })
   }, [])
   const tips = useMemo(
@@ -401,7 +401,7 @@ function Palisade() {
 
 // Stacked tiki totem by the crate clearing
 function Totem() {
-  const y = heightAt(TOTEM.x, TOTEM.z)
+  const y = groundAt(TOTEM.x, TOTEM.z)
   const blocks = ['#c8323a', '#2fa39a', '#e0a020']
   return (
     <group position={[TOTEM.x, y, TOTEM.z]} rotation-y={-0.5}>
@@ -507,8 +507,9 @@ const _p = new Vector3()
 const _s = new Vector3()
 const _e = new Euler()
 
-// One instanced mesh for a list of { pos, rot?, scale? }
-export function Instances({ items, color, children, shadow = true }) {
+// One instanced mesh for a list of { pos, rot?, scale? }; extra props go to
+// the material (a wind sway, say)
+export function Instances({ items, color, children, shadow = true, ...material }) {
   const ref = useRef()
   useLayoutEffect(() => {
     const mesh = ref.current
@@ -524,7 +525,7 @@ export function Instances({ items, color, children, shadow = true }) {
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, items.length]} castShadow={shadow} receiveShadow>
       {children}
-      <Toon color={color} flatShading />
+      <Toon color={color} flatShading {...material} />
     </instancedMesh>
   )
 }
@@ -533,7 +534,7 @@ export function Instances({ items, color, children, shadow = true }) {
 function VentRim() {
   const [x, z] = LAVA[0]
   return (
-    <mesh position={[x, heightAt(x, z) + 0.15, z]}>
+    <mesh position={[x, groundAt(x, z) + 0.15, z]}>
       <torusGeometry args={[1.9, 0.6, 5, 10]} />
       <Toon color="#4a2a1a" />
     </mesh>

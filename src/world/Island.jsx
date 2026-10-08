@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BufferAttribute, Color, PlaneGeometry } from 'three'
-import { ISLAND, TERRAIN_SEGMENTS, heightAt, slopeAt, smoothstep } from './terrain'
+import { ISLAND, TERRAIN_SEGMENTS, ZONES, groundAt, slopeAt, smoothstep, zoneWeight } from './terrain'
 import { trailDistance2 } from './track'
 import { TOON_RAMP } from './toon'
 import { world } from '../store'
@@ -14,6 +14,11 @@ const PALETTE = {
   rock: new Color('#9a6a46'),
   rockLight: new Color('#b98a5e'),
   dirt: new Color('#e3a868'),
+  meadow: new Color('#86cf55'),
+  meadowLight: new Color('#a7dc62'),
+  jungleFloor: new Color('#2f7d3a'),
+  mud: new Color('#7a6a3a'),
+  bare: new Color('#b8925a'),
   shallow: new Color('#4fd2cf'),
   deep: new Color('#167c96'),
 }
@@ -35,12 +40,24 @@ function Terrain() {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
-      const y = heightAt(x, z)
+      const y = groundAt(x, z)
       pos.setY(i, y)
 
       if (y < -0.3) c.copy(PALETTE.sandWet)
       else if (y < 0.9) c.copy(PALETTE.sand)
-      else c.copy(PALETTE.grass).lerp(PALETTE.grassDeep, smoothstep(3, 7, y))
+      else {
+        c.copy(PALETTE.grass).lerp(PALETTE.grassDeep, smoothstep(3, 7, y))
+        // Zones: a sunny meadow with lighter patches, a dark jungle floor
+        const meadow = zoneWeight(ZONES.meadow, x, z)
+        const patch = Math.sin(x * 0.45 + 1.3) * Math.cos(z * 0.38) + Math.sin((x + z) * 0.21) * 0.6
+        if (meadow > 0) c.lerp(patch > 0.4 ? PALETTE.meadowLight : PALETTE.meadow, meadow * 0.85)
+        c.lerp(PALETTE.jungleFloor, zoneWeight(ZONES.jungle, x, z) * 0.7)
+        // Bare earth here and there, and mud round the pond
+        const bare = Math.sin(x * 0.9 + z * 0.3) * Math.sin(z * 0.7 - x * 0.2)
+        if (bare > 0.82 && y < 6) c.lerp(PALETTE.bare, 0.5)
+        const pd = Math.hypot(x - ISLAND.pond.x, z - ISLAND.pond.z) / ISLAND.pond.radius
+        if (pd < 1.35) c.lerp(PALETTE.mud, 1 - smoothstep(1.05, 1.35, pd))
+      }
 
       // The massif turns to bare rock as it climbs, lighter toward the top
       const rocky = Math.max(smoothstep(6, 9, y), y > 0.5 && slopeAt(x, z) > 1.1 ? 1 : 0)
@@ -88,7 +105,7 @@ function Ocean() {
       // The plane is rotated -90° about x, so local y is world -z
       const x = pos.getX(i)
       const z = -pos.getY(i)
-      const depth = ISLAND.waterLevel - heightAt(x, z)
+      const depth = ISLAND.waterLevel - groundAt(x, z)
       c.copy(PALETTE.shallow).lerp(PALETTE.deep, smoothstep(0.4, 2.2, depth))
       colors.set([c.r, c.g, c.b], i * 3)
       depths[i] = depth

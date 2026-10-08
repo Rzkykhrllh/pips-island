@@ -19,7 +19,19 @@ export const ISLAND = {
   mound: { x: 0, z: -34, height: 15, sigma: 11 },
   gorge: { z: -13, depth: 8, width: 2.5 }, // the river gorge the rope bridge crosses
   village: { x: 40, z: 5 },
+  pond: { x: 21, z: 27, radius: 4.5, depth: 1.4 }, // a freshwater pond in the east meadow
   waterLevel: -0.2,
+}
+
+// Zones that change what grows and how the ground looks
+export const ZONES = {
+  meadow: { x: 22, z: 26, radius: 13 }, // open grass, flowers and the pond, east of the trail
+  jungle: { x: -22, z: 22, radius: 20 }, // dense, dark jungle floor in the west
+}
+// 1 in the middle of a zone, fading to 0 over its outer third
+export function zoneWeight(zone, x, z) {
+  const d = Math.hypot(x - zone.x, z - zone.z) / zone.radius
+  return 1 - smoothstep(0.65, 1, d)
 }
 
 // Ground-hugging flows, control points in x/z (Landmarks.jsx draws them).
@@ -95,41 +107,56 @@ export function heightAt(x, z) {
 
   const grooves = base > 0 ? channel(WATERFALL, x, z, 0.9, 0.9) + channel(LAVA, x, z, 0.6, 1) : 0
 
-  return base + massif - canyon - grooves + hills * (base > 0 ? 1 : 0.3)
+  // The pond: a bowl with a flat-ish bottom
+  const { pond } = ISLAND
+  const pd = Math.hypot(x - pond.x, z - pond.z) / pond.radius
+  const bowl = pd < 1.6 ? pond.depth * (1 - smoothstep(0.55, 1.35, pd)) : 0
+
+  return base + massif - canyon - grooves - bowl + hills * (base > 0 ? 1 : 0.3)
 }
 
 // The terrain mesh is a grid of flat triangles sampled from heightAt, so
 // between grid points the drawn ground can sit above or below the formula.
-// groundAt gives the height of the surface as actually drawn: it finds the
-// grid cell and the triangle within it (split the way PlaneGeometry splits
-// it) and interpolates its corners.
+// The grid heights are computed once and cached; groundAt gives the height of
+// the surface as actually drawn: it finds the grid cell and the triangle
+// within it (split the way PlaneGeometry splits it) and interpolates its
+// corners. It's also far cheaper than heightAt, so placement code uses it.
 export const TERRAIN_SEGMENTS = 140
 const CELL = ISLAND.size / TERRAIN_SEGMENTS
 const HALF = ISLAND.size / 2
+const ROW = TERRAIN_SEGMENTS + 1
+let grid = null
+// Height at grid point (ix, iz); world x = ix * CELL - HALF, z = iz * CELL - HALF
+export function gridHeight(ix, iz) {
+  if (!grid) {
+    grid = new Float32Array(ROW * ROW)
+    for (let j = 0; j < ROW; j++) for (let i = 0; i < ROW; i++) grid[j * ROW + i] = heightAt(i * CELL - HALF, j * CELL - HALF)
+  }
+  return grid[iz * ROW + ix]
+}
 export function groundAt(x, z) {
   const gx = (x + HALF) / CELL
   const gz = (z + HALF) / CELL
   const ix = Math.floor(gx)
   const iz = Math.floor(gz)
+  if (ix < 0 || iz < 0 || ix >= TERRAIN_SEGMENTS || iz >= TERRAIN_SEGMENTS) return heightAt(x, z)
   const u = gx - ix
   const v = gz - iz
-  const x0 = ix * CELL - HALF
-  const z0 = iz * CELL - HALF
-  const hb = heightAt(x0, z0 + CELL)
-  const hd = heightAt(x0 + CELL, z0)
+  const hb = gridHeight(ix, iz + 1)
+  const hd = gridHeight(ix + 1, iz)
   if (u + v <= 1) {
-    const ha = heightAt(x0, z0)
+    const ha = gridHeight(ix, iz)
     return ha + (hd - ha) * u + (hb - ha) * v
   }
-  const hc = heightAt(x0 + CELL, z0 + CELL)
+  const hc = gridHeight(ix + 1, iz + 1)
   return hc + (hb - hc) * (1 - u) + (hd - hc) * (1 - v)
 }
 
 // Rough steepness, used to paint cliffs and canyon walls as rock.
 export function slopeAt(x, z) {
-  const e = 0.6
-  const hx = heightAt(x + e, z) - heightAt(x - e, z)
-  const hz = heightAt(x, z + e) - heightAt(x, z - e)
+  const e = 0.7
+  const hx = groundAt(x + e, z) - groundAt(x - e, z)
+  const hz = groundAt(x, z + e) - groundAt(x, z - e)
   return Math.hypot(hx, hz) / (2 * e)
 }
 
