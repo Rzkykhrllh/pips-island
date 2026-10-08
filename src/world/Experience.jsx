@@ -6,6 +6,7 @@ import Bridge from './Bridge'
 import CameraControls from './CameraControls'
 import Crates from './Crates'
 import Director, { CAMERA_START } from './Director'
+import Effects from './Effects'
 import Island from './Island'
 import Landmarks from './Landmarks'
 import Life from './Life'
@@ -58,6 +59,7 @@ export default function Experience() {
       <Bridge />
       <Crates />
       <Life />
+      <Effects />
       {/* If the cat's model can't load, Pip runs instead */}
       <ErrorBoundary
         fallback={

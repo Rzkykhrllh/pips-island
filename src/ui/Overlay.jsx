@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { nudgeCamera, resetCamera, useUi } from '../store'
+import { nudgeCamera, resetCamera, uiStore, useUi, world } from '../store'
 import { setAmbience } from '../audio'
 import { STOPS } from '../sections'
 
@@ -29,6 +29,17 @@ const NEXT = [
   { when: 'Later', what: 'A warp room with short levels for projects, experience and skills, plus time trials.' },
 ]
 
+// Play: the cat warps out in a beam of light, the screen flares white, and
+// the game opens. A modified click (new tab and so on) works as a plain link.
+function warpToGame(e) {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  if (!uiStore.get().ready || world.reducedMotion || world.leaving >= 0) return
+  e.preventDefault()
+  world.leaving = 0
+  document.body.classList.add('warping')
+  setTimeout(() => window.location.assign(GAME_URL), 1100)
+}
+
 function jumpTo(p) {
   const max = document.documentElement.scrollHeight - window.innerHeight
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -37,18 +48,37 @@ function jumpTo(p) {
 
 function Hud() {
   const crates = useUi((s) => s.crates)
+  const fruit = useUi((s) => s.fruit)
+  const found = useUi((s) => s.bonusFound)
+  const total = useUi((s) => s.bonusTotal)
   return (
     <>
       <a className="hud-logo" href="#top" onClick={(e) => (e.preventDefault(), jumpTo(0))}>
         N. Usantara
       </a>
-      <div className="hud-crates" aria-live="polite">
-        <span className="crate-icon" aria-hidden="true" />
-        <span>
-          {crates} / {FEATURES.length}
-          <span className="visually-hidden"> crates broken</span>
+      <div className="hud-crates">
+        <span className="stat" title="Fruit">
+          {/* Re-keyed so the icon pops each time the count goes up */}
+          <span key={fruit} className={`fruit-icon${fruit ? ' pop' : ''}`} aria-hidden="true" />
+          {fruit}
+          <span className="visually-hidden"> fruit</span>
         </span>
+        <span className="stat" title="Crates on the trail">
+          <span className="crate-icon" aria-hidden="true" />
+          {crates} / {FEATURES.length}
+          <span className="visually-hidden"> trail crates broken</span>
+        </span>
+        {total > 0 && (
+          <span className="stat" title="Hidden crates">
+            <span className="crate-icon bonus" aria-hidden="true">
+              ?
+            </span>
+            {found} / {total}
+            <span className="visually-hidden"> hidden crates found</span>
+          </span>
+        )}
       </div>
+      <Toast />
       <CameraButtons />
       <nav className="hud-trail" aria-label="Jump along the trail">
         {STOPS.map((s) => (
@@ -59,6 +89,27 @@ function Hud() {
         ))}
       </nav>
     </>
+  )
+}
+
+// Short messages (a hidden crate found), one at a time
+function Toast() {
+  const t = useUi((s) => s.toast)
+  const [shown, setShown] = useState(null)
+  useEffect(() => {
+    if (!t) return
+    setShown(t)
+    const id = setTimeout(() => setShown(null), 2800)
+    return () => clearTimeout(id)
+  }, [t])
+  return (
+    <div className="toast" role="status" aria-live="polite">
+      {shown && (
+        <span key={shown.id} className="toast-body">
+          {shown.text}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -92,22 +143,22 @@ function CameraButtons() {
   return (
     <div className="hud-camera" role="group" aria-label="Camera and sound">
       <SoundButton />
-      <button type="button" onClick={() => nudgeCamera({ yaw: turn })} aria-label="Turn camera left">
+      <button type="button" onClick={() => nudgeCamera({ yaw: turn })} className="cam-move" aria-label="Turn camera left">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 7H4V3M4.6 7a9 9 0 1 1-.9 7" />
         </svg>
       </button>
-      <button type="button" onClick={() => nudgeCamera({ yaw: -turn })} aria-label="Turn camera right">
+      <button type="button" onClick={() => nudgeCamera({ yaw: -turn })} className="cam-move" aria-label="Turn camera right">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M16 7h4V3M19.4 7a9 9 0 1 0 .9 7" />
         </svg>
       </button>
-      <button type="button" onClick={() => nudgeCamera({ zoom: 0.8 })} aria-label="Zoom in">
+      <button type="button" onClick={() => nudgeCamera({ zoom: 0.8 })} className="cam-move" aria-label="Zoom in">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
       </button>
-      <button type="button" onClick={() => nudgeCamera({ zoom: 1.25 })} aria-label="Zoom out">
+      <button type="button" onClick={() => nudgeCamera({ zoom: 1.25 })} className="cam-move" aria-label="Zoom out">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 12h14" />
         </svg>
@@ -147,12 +198,19 @@ export default function Overlay() {
               <span>N. Usantara</span> <span>Island</span>
             </h1>
             <p className="hero-sub">Smash crates. Find my work. Watch out for TNT.</p>
-            <a className="play" href={GAME_URL}>
+            <a className="play" href={GAME_URL} onClick={warpToGame}>
               Play now
             </a>
             <Loading />
             <span className="scroll-cue" aria-hidden="true" />
-            <p className="hero-hint">Scroll to follow the cat · drag the island to look around</p>
+            <p className="hero-hint">
+              Scroll to follow the cat · drag the island to look around · click crates (and the cat)
+              <span className="keys">
+                <br />
+                <kbd>K</kbd> spin · <kbd>J</kbd> jump
+              </span>{' '}
+              · six hidden crates to find
+            </p>
           </div>
         </section>
 
@@ -219,7 +277,7 @@ export default function Overlay() {
             <h2>You made it to the top.</h2>
             <p>The real island is waiting. Bring a keyboard or a thumb.</p>
             <div className="summit-actions">
-              <a className="play" href={GAME_URL}>
+              <a className="play" href={GAME_URL} onClick={warpToGame}>
                 Play N. Usantara Island
               </a>
               <a className="plain" href={PORTFOLIO_URL} target="_blank" rel="noopener">

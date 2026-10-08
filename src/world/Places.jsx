@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Vector3 } from 'three'
 import { groundAt } from './terrain'
-import { BOAT, CAMPFIRE, DOCK, POND, RUINS, mulberry32 } from './layout'
+import { BOAT, CAMPFIRE, DOCK, POND, RUINS, RUINS_BASE, mulberry32 } from './layout'
 import { Instances, Puffs, Toon } from './Landmarks'
 import { windSway } from './wind'
 import Baked from './Baked'
@@ -147,8 +147,7 @@ function Pond() {
 // lintel, a fallen column, loose blocks with moss, and a brazier still burning
 function Ruins() {
   const { x, z, rot } = RUINS
-  // Sit the platform on the lowest corner of its footprint so it never floats
-  const y = Math.min(...[[-4, -3], [4, -3], [-4, 3], [4, 3]].map(([dx, dz]) => groundAt(x + dx, z + dz))) - 0.2
+  const y = RUINS_BASE
   const stone = '#c2b69c'
   const dark = '#a3977e'
   const moss = '#5c9a45'

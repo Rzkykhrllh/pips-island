@@ -162,6 +162,12 @@ function Clouds() {
         })
       }
     }
+    // A high deck the opening shot dives through on its way down
+    for (let i = 0; i < 14; i++) {
+      const a = i * 2.39
+      const r = 10 + (i % 5) * 7
+      out.push({ cloud: 12 + i, x: 32 + Math.cos(a) * r, y: 96 + (i % 4) * 4, z: 18 + Math.sin(a) * r, s: 5 + (i % 3) * 2 })
+    }
     return out
   }, [])
   const drift = useRef(0)

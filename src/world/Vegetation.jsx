@@ -15,7 +15,7 @@ import {
 } from 'three'
 import { ZONES, groundAt, slopeAt, zoneWeight } from './terrain'
 import { trailDistance2 } from './track'
-import { BAMBOO, isClear, mulberry32 } from './layout'
+import { BAMBOO, BONUS_CRATES, isClear, mulberry32 } from './layout'
 import { TOON_RAMP } from './toon'
 import { WIND_TIME, windSway } from './wind'
 import { world } from '../store'
@@ -209,6 +209,7 @@ function useForest() {
       const x = BAMBOO.x + Math.cos(a) * r
       const z = BAMBOO.z + Math.sin(a) * r
       if (trailDistance2(x, z) < 2.5 ** 2) continue
+      if (BONUS_CRATES.some((b) => (b.x - x) ** 2 + (b.z - z) ** 2 < 1.3 ** 2)) continue
       const y = groundAt(x, z)
       const lean = new Euler((rand() - 0.5) * 0.15, rand() * Math.PI * 2, (rand() - 0.5) * 0.15)
       root.compose(new Vector3(x, y - 0.1, z), new Quaternion().setFromEuler(lean), one)

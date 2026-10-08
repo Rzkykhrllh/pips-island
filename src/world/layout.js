@@ -70,6 +70,28 @@ export const RUINS = { x: -26, z: 10, rot: 0.5 }
 export const BAMBOO = { x: -16, z: 31, radius: 4 }
 export const TOTEM = { x: 10.5, z: 14 }
 
+// The ruins' platform sits on the lowest corner of its footprint so it never floats
+export const RUINS_BASE = Math.min(...[[-4, -3], [4, -3], [-4, 3], [4, 3]].map(([dx, dz]) => groundAt(RUINS.x + dx, RUINS.z + dz))) - 0.2
+const ruinsToWorld = (lx, lz) => [
+  RUINS.x + lx * Math.cos(RUINS.rot) + lz * Math.sin(RUINS.rot),
+  RUINS.z - lx * Math.sin(RUINS.rot) + lz * Math.cos(RUINS.rot),
+]
+
+// Hidden "?" crates off the trail, for anyone who turns the camera to look
+// around. y is where the crate's bottom sits.
+const onGround = (x, z, where) => ({ x, z, y: groundAt(x, z), where })
+export const BONUS_CRATES = [
+  (() => {
+    const [x, z] = ruinsToWorld(1.7, 1.1)
+    return { x, z, y: RUINS_BASE + 1.15, where: 'in the temple ruins' }
+  })(),
+  { x: 66.6, z: 6.5, y: DOCK.y + 0.05, where: 'at the end of the jetty' },
+  onGround(POND.x - 6, POND.z + 1.5, 'by the pond'),
+  onGround(44.5, 5.2, 'by the campfire'),
+  onGround(BAMBOO.x + 0.6, BAMBOO.z - 0.4, 'in the bamboo'),
+  onGround(-13, 42, 'on the beach'),
+]
+
 // Palisade of sharpened logs around the west side of the village
 export const PALISADE = []
 for (let a = 2.0; a <= 4.1; a += 0.055) {
@@ -91,6 +113,7 @@ export function isClear(x, z, margin = 1) {
   for (const h of HUTS) if ((h.x - x) ** 2 + (h.z - z) ** 2 < (2.6 + margin) ** 2) return false
   if ((TOWER.x - x) ** 2 + (TOWER.z - z) ** 2 < (2 + margin) ** 2) return false
   if ((TOTEM.x - x) ** 2 + (TOTEM.z - z) ** 2 < (1.6 + margin) ** 2) return false
+  for (const b of BONUS_CRATES) if ((b.x - x) ** 2 + (b.z - z) ** 2 < (0.9 + margin) ** 2) return false
   if ((CAMPFIRE.x - x) ** 2 + (CAMPFIRE.z - z) ** 2 < (2.2 + margin) ** 2) return false
   if ((POND.x - x) ** 2 + (POND.z - z) ** 2 < (POND.radius * 1.15 + margin) ** 2) return false
   if ((RUINS.x - x) ** 2 + (RUINS.z - z) ** 2 < (7 + margin) ** 2) return false

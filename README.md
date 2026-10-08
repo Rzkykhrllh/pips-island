@@ -47,16 +47,22 @@ src/
     Landmarks.jsx       rock spires, tiki face, waterfall, lava, huts, palisade, dashed trail path
     Places.jsx          meadow pond, temple ruins, jetty and rowboat, campfire
     Life.jsx            butterflies by day, fireflies at dusk
+    Effects.jsx         warp beam, fire and lava glows, waterfall rainbow, jungle sun shafts
     wind.js             shared wind sway for everything that grows
     Baked.jsx           folds static JSX props into one mesh (one draw call)
     Vegetation.jsx      zoned planting: beach palms and shells, meadow grass and flowers,
                         jungle ferns and mushrooms, bamboo, boulders (seeded, instanced)
-    Crates.jsx          breakable crates with fruit
+    Crates.jsx          trail crates and six hidden "?" crates; click to smash, fruit counter
     Bridge.jsx          rope bridge over the gorge
     Cat.jsx             the default runner: rigged GLB, idle / walk / run / victory, spins through crates
     Pip.jsx             the procedural sprout (?char=pip)
     Atmosphere.jsx      keyed lighting (morning -> sunset), sky, fill light, sun halo, clouds, shadows
 ```
+
+Playing: click or tap any crate to smash it (six hidden "?" crates are spread
+round the island), click the cat or press K / X to spin, J to jump. The page
+opens with a dive through the clouds and the cat beaming down; Play warps the
+cat out and flares into the game.
 
 Camera: the scroll drives a cinematic shot per section, and the viewer can
 orbit on top of it: drag the island (sideways only on touch, so vertical swipes

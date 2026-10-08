@@ -11,7 +11,12 @@ export const world = {
   pipPos: null,
   pipDir: null,
   facing: 1,
-  hop: 10, // seconds since the last crate spin
+  hop: 10, // seconds since the last spin (a crate breaking, a click on the cat, K / X)
+  jump: 10, // seconds since the last jump (J)
+  pointerAt: -1e9, // performance.now() of the viewer's last pointer move over the island
+  intro: 1, // opening shot, 0 -> 1 (Director.jsx); 1 when skipped
+  warp: -1, // seconds since the cat warped in (negative: not yet)
+  leaving: -1, // seconds since Play was pressed and the cat warps out (negative: not leaving)
   // Where the viewer has swung the camera (drag / pinch / buttons), on top of
   // the scroll-driven shot. Targets; Director.jsx eases toward them.
   orbit: { yaw: 0, pitch: 0, zoom: 1 },
@@ -21,8 +26,10 @@ export const world = {
 // Tiny external store for the few values the HTML overlay cares about.
 // crates: broken so far; ready: the 3D scene has its runner loaded;
 // orbited: the viewer has moved the camera away from the default shot;
-// noScene: no WebGL, or the scene failed to load (the page carries on without it)
-let ui = { crates: 0, ready: false, orbited: false, noScene: false }
+// noScene: no WebGL, or the scene failed to load (the page carries on without it);
+// fruit: collected from crates; bonusFound / bonusTotal: hidden "?" crates;
+// toast: a short message for the HUD ({ text, id })
+let ui = { crates: 0, ready: false, orbited: false, noScene: false, fruit: 0, bonusFound: 0, bonusTotal: 0, toast: null }
 const listeners = new Set()
 export const uiStore = {
   get: () => ui,
@@ -60,3 +67,6 @@ export function resetCamera() {
   o.zoom = 1
   uiStore.set({ orbited: false })
 }
+
+let toastId = 0
+export const toast = (text) => uiStore.set({ toast: { text, id: ++toastId } })

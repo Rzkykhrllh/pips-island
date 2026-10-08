@@ -12,6 +12,7 @@ import {
   MeshToonMaterial,
   Quaternion,
   RepeatWrapping,
+  ShaderMaterial,
   SRGBColorSpace,
   Vector3,
 } from 'three'
@@ -232,12 +233,18 @@ function Flow({ points, width, lift, base, streak, edge, speed, scale }) {
     }),
     [base, streak, edge, speed, scale],
   )
+  // Built here rather than as JSX props: R3F copies a `uniforms` prop into new
+  // wrappers, so values set on our object afterwards would never reach the shader
+  const material = useMemo(
+    () => new ShaderMaterial({ vertexShader: FLOW_VERT, fragmentShader: FLOW_FRAG, uniforms, side: DoubleSide }),
+    [uniforms],
+  )
   useFrame((_, dt) => {
     if (!world.reducedMotion) uniforms.uTime.value += dt
   })
   return (
     <mesh geometry={geometry}>
-      <shaderMaterial vertexShader={FLOW_VERT} fragmentShader={FLOW_FRAG} uniforms={uniforms} side={DoubleSide} />
+      <primitive object={material} attach="material" />
     </mesh>
   )
 }

@@ -221,6 +221,58 @@ body {
 body.scene-ready .stage {
   opacity: 1;
 }
+
+/* The title bounces as the cat lands at the end of the opening shot */
+body.scene-ready .hero-title span {
+  animation: land 700ms cubic-bezier(0.3, 1.4, 0.5, 1) 3.3s both;
+}
+body.scene-ready .hero-title span:last-child {
+  animation-delay: 3.42s;
+}
+@keyframes land {
+  0% {
+    translate: 0 0;
+    scale: 1 1;
+  }
+  35% {
+    translate: 0 -0.14em;
+    scale: 0.96 1.06;
+  }
+  70% {
+    translate: 0 0;
+    scale: 1.05 0.92;
+  }
+  100% {
+    translate: 0 0;
+    scale: 1 1;
+  }
+}
+
+/* Warping out to the game: a flare of light that fills the screen */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 55%, #ffffff 0, #fff8e6 30%, rgba(255, 248, 230, 0) 62%);
+  opacity: 0;
+  transform: scale(0.2);
+}
+body.warping::after {
+  animation: warp-out 1.1s ease-in forwards;
+}
+@keyframes warp-out {
+  0%,
+  35% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(3.2);
+  }
+}
 /* No WebGL: a painted sea and sky instead of the island, and no 3D hints */
 body.no-scene {
   background: linear-gradient(180deg, var(--sky) 0%, #bfe8ff 45%, #4fd2cf 46%, var(--sea) 100%) fixed;
@@ -485,12 +537,98 @@ body.no-scene .scroll-cue {
   gap: 0.45rem;
   font-variant-numeric: tabular-nums;
 }
+.hud-crates .stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.hud-crates .stat + .stat {
+  margin-left: 0.55rem;
+}
 .crate-icon {
   width: 16px;
   height: 16px;
   background: var(--crate);
   border: 3px solid #e9b06a;
   border-radius: 3px;
+}
+.crate-icon.bonus {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font: 400 12px/1 var(--font-display);
+  color: #ffd23f;
+  background: #d08a3e;
+  -webkit-text-stroke: 1px #5e3a1a;
+}
+.fruit-icon {
+  width: 15px;
+  height: 14px;
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 35% 35%, #ffb27a, var(--fruit) 60%);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.15);
+}
+.fruit-icon.pop {
+  animation: pop 380ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes pop {
+  0% {
+    transform: scale(1.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.toast {
+  position: fixed;
+  z-index: 3;
+  top: calc(env(safe-area-inset-top, 0px) + 4.2rem);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.toast-body {
+  display: block;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--sun);
+  color: #2b1a0f;
+  font-weight: 800;
+  border-bottom: 4px solid var(--sun-dark);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  animation: toast 2.8s ease both;
+}
+@keyframes toast {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+  10%,
+  85% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (pointer: coarse) {
+  .hero-hint .keys {
+    display: none;
+  }
+}
+.hero-hint kbd {
+  display: inline-block;
+  padding: 0 0.35em;
+  border-radius: 4px;
+  background: rgba(255, 248, 230, 0.9);
+  color: #3a2412;
+  font: 800 0.8rem var(--font-body);
+  text-shadow: none;
 }
 
 .hud-camera {
@@ -579,16 +717,25 @@ body.no-scene .scroll-cue {
 /* ---------- Small screens ---------- */
 
 @media (max-width: 640px) {
-  /* Phones: camera buttons stack under the crate counter, clear of the signs */
+  /* Phones: drag and pinch do the turning and zooming, so only sound and
+     reset stay, in a row under the counters */
+  .hud-camera .cam-move {
+    display: none;
+  }
   .hud-camera {
-    top: calc(env(safe-area-inset-top, 0px) + 4.2rem);
+    top: calc(env(safe-area-inset-top, 0px) + 4.1rem);
     bottom: auto;
-    flex-direction: column;
-    align-items: flex-end;
+  }
+  .toast {
+    top: calc(env(safe-area-inset-top, 0px) + 7.2rem);
   }
   .hud-camera button {
     min-width: 2.2rem;
     height: 2.2rem;
+  }
+  .hud-camera .reset {
+    padding: 0 0.6rem;
+    font-size: 0.75rem;
   }
   .pin {
     align-items: flex-end;
@@ -617,6 +764,11 @@ body.no-scene .scroll-cue {
 @media (prefers-reduced-motion: reduce) {
   .stage {
     transition: none;
+  }
+  .fruit-icon.pop,
+  .toast-body,
+  body.scene-ready .hero-title span {
+    animation: none;
   }
   .scroll-cue::after,
   .crate-spin {

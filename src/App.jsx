@@ -45,12 +45,20 @@ export default function App() {
     setMotion()
     measure()
     world.progress = world.target // no fly-through when reloading mid-page
+    // Coming back from the game with the back button: undo the warp-out
+    const shown = (e) => {
+      if (!e.persisted) return
+      world.leaving = -1
+      document.body.classList.remove('warping')
+    }
+    window.addEventListener('pageshow', shown)
     window.addEventListener('scroll', update, { passive: true })
     window.addEventListener('resize', measure)
     const resized = new ResizeObserver(measure)
     resized.observe(document.body)
     motion.addEventListener('change', setMotion)
     return () => {
+      window.removeEventListener('pageshow', shown)
       window.removeEventListener('scroll', update)
       window.removeEventListener('resize', measure)
       resized.disconnect()

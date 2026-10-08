@@ -4,7 +4,7 @@ import { MathUtils, Spherical, Vector3 } from 'three'
 import { ISLAND, groundAt, smoothstep } from './terrain'
 import { markerU, progressToU, track, trailPoint } from './track'
 import { SPIRES } from './layout'
-import { world } from '../store'
+import { uiStore, world } from '../store'
 
 // Turns scroll progress into the runner's position and the camera.
 //
@@ -130,11 +130,27 @@ function smoothTangent(u, target) {
   return target.normalize()
 }
 
+// Opening: the camera starts high above the clouds, then spirals down through
+// them to the world-map view while the island fades in; near the end the cat
+// warps in on the beach. Skipped with reduced motion or when the page loads
+// part-way down; scrolling during it hurries it along.
+const INTRO_TIME = 4.5
+const INTRO_HEIGHT = 150
+const WARP_AT = 0.72 // point in the opening when the cat beams down
+const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2)
+const PLAYS_INTRO =
+  !window.matchMedia('(prefers-reduced-motion: reduce)').matches && window.scrollY < 20
+
 function introShot(t, narrow, target, lookTarget) {
   // A slow drift round the island, like an idle world map
   const a = 0.42 + (world.reducedMotion ? 0 : Math.sin(t * 0.07) * 0.12)
   const r = narrow ? 145 : 104
-  target.set(ISLAND_CENTER.x + Math.sin(a) * r, narrow ? 68 : 50, ISLAND_CENTER.z + Math.cos(a) * r)
+  const height = narrow ? 68 : 50
+  const e = easeInOut(world.intro)
+  // From high and close over the island, swinging round as it descends
+  const swing = a + (1 - e) * 0.9
+  const reach = r * (0.3 + 0.7 * e)
+  target.set(ISLAND_CENTER.x + Math.sin(swing) * reach, MathUtils.lerp(INTRO_HEIGHT, height, e), ISLAND_CENTER.z + Math.cos(swing) * reach)
   lookTarget.copy(ISLAND_CENTER)
 }
 
@@ -149,9 +165,11 @@ function outroShot(t, narrow, target, lookTarget) {
 }
 
 export const CAMERA_START = (() => {
+  world.intro = PLAYS_INTRO ? 0 : 1
   introShot(0, false, intro, introLook)
   return intro.toArray()
 })()
+let introDecided = false
 
 export default function Director() {
   const camera = useThree((s) => s.camera)
@@ -166,6 +184,19 @@ export default function Director() {
   useFrame(({ camera, size, clock }, rawDt) => {
     const dt = Math.min(rawDt, 0.05)
     const t = clock.elapsedTime
+
+    // The opening waits for the runner, so it plays with everything in place
+    if (!introDecided && uiStore.get().ready) {
+      introDecided = true
+      if (world.reducedMotion || world.progress > 0.02) world.intro = 1
+      if (world.intro >= 1) world.warp = 10
+    }
+    if (introDecided && world.intro < 1) {
+      world.intro = Math.min(1, world.intro + dt / INTRO_TIME + (world.target > 0.02 ? dt * 0.8 : 0))
+    }
+    if (world.intro >= WARP_AT && world.warp < 0) world.warp = 0
+    if (world.warp >= 0) world.warp += dt
+    if (world.leaving >= 0) world.leaving += dt
     const lambda = world.reducedMotion ? 30 : 3.5
     world.progress = MathUtils.damp(world.progress, world.target, lambda, dt)
     const p = world.progress
@@ -223,7 +254,11 @@ export default function Director() {
     desired.copy(desiredLook).add(offset.setFromSpherical(spherical))
     keepLineOfSight(keepClear(desired), desiredLook)
 
-    const kPos = 1 - Math.exp(-(world.reducedMotion ? 30 : 4) * dt)
+    // Warping out to the game: push in on the cat
+    if (world.leaving >= 0) desired.lerp(desiredLook, Math.min(0.55, world.leaving * 0.6))
+
+    // Tight follow during the opening, so its path plays as written
+    const kPos = 1 - Math.exp(-(world.reducedMotion || world.intro < 1 ? 30 : 4) * dt)
     const kLook = 1 - Math.exp(-(world.reducedMotion ? 30 : 6) * dt)
     camera.position.lerp(desired, kPos)
     look.lerp(desiredLook, kLook)
