@@ -1,8 +1,9 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
-import { heightAt } from './terrain'
+import { groundAt, heightAt } from './terrain'
+export { STOPS } from '../sections'
 
 // ---------------------------------------------------------------------------
-// The trail Pip runs along. Scroll progress -> position on this curve.
+// The trail the runner follows. Scroll progress -> position on this curve.
 // ---------------------------------------------------------------------------
 
 const ground = (x, z) => new Vector3(x, heightAt(x, z), z)
@@ -27,8 +28,8 @@ const add = (v, name) => {
   points.push(v)
 }
 
-// Beach -> jungle -> crate clearing -> rope bridge -> summit
-add(ground(0, 48), 'start')
+// Beach -> jungle -> crate clearing -> rope bridge -> switchbacks up the massif -> summit
+add(ground(0, 49), 'start')
 add(ground(3, 41))
 add(ground(-3, 34))
 add(ground(2, 27))
@@ -39,10 +40,11 @@ add(ground(-1, -3), 'cratesEnd')
 for (let i = 0; i <= 6; i++) {
   add(bridgeDeckPoint(i / 6), i === 0 ? 'bridgeStart' : i === 6 ? 'bridgeEnd' : undefined)
 }
-add(ground(3, -23))
-add(ground(6, -30))
-add(ground(2, -36))
-add(ground(0, -42), 'peak')
+add(ground(4, -22))
+add(ground(9, -26))
+add(ground(8, -30))
+add(ground(3, -32))
+add(ground(0, -34), 'peak')
 
 export const track = new CatmullRomCurve3(points, false, 'centripetal')
 
@@ -57,7 +59,7 @@ export const markerU = Object.fromEntries(
 )
 
 // ---------------------------------------------------------------------------
-// Scroll timeline: [scroll progress, trail marker]. Pip moves linearly between
+// Scroll timeline: [scroll progress, trail marker]. The runner moves linearly between
 // keyframes, so each page section lines up with a place on the island.
 // Tweak these together with the section heights in ui/Overlay.jsx.
 // ---------------------------------------------------------------------------
@@ -89,9 +91,45 @@ export const CRATE_PROGRESS = [0.36, 0.43, 0.5, 0.57]
 
 export const isOnBridge = (u) => u > markerU.bridgeStart && u < markerU.bridgeEnd
 
-// Ground position for Pip at trail position u.
+// Highest point of the drawn ground under a footprint of radius r, so feet
+// planted on a slope never sink into the uphill side
+export function footing(x, z, r = 0.35) {
+  let h = groundAt(x, z)
+  h = Math.max(h, groundAt(x + r, z), groundAt(x - r, z), groundAt(x, z + r), groundAt(x, z - r))
+  return h
+}
+
+// The dashed path is drawn this far above the ground; the runner and the
+// crates stand on top of it
+export const PATH_TOP = 0.1
+
+// Where the runner's feet go at trail position u: on the path, or on the planks
 export function trailPoint(u, target = new Vector3()) {
   track.getPointAt(Math.min(1, Math.max(0, u)), target)
-  if (!isOnBridge(u)) target.y = heightAt(target.x, target.z)
+  if (!isOnBridge(u)) target.y = footing(target.x, target.z) + PATH_TOP
   return target
+}
+
+// Squared distance from (x, z) to the trail, for anything within one grid cell
+// (4 units) of it; Infinity further out. Points along the trail are bucketed
+// in a grid, so a lookup checks a handful of points instead of all of them.
+const CELL = 4
+const trailGrid = new Map()
+for (const p of track.getSpacedPoints(480)) {
+  const key = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`
+  if (!trailGrid.has(key)) trailGrid.set(key, [])
+  trailGrid.get(key).push(p)
+}
+export function trailDistance2(x, z) {
+  const cx = Math.floor(x / CELL)
+  const cz = Math.floor(z / CELL)
+  let best = Infinity
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      const bucket = trailGrid.get(`${cx + i},${cz + j}`)
+      if (!bucket) continue
+      for (const p of bucket) best = Math.min(best, (p.x - x) ** 2 + (p.z - z) ** 2)
+    }
+  }
+  return best
 }

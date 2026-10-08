@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { CatmullRomCurve3, Object3D, TubeGeometry, Vector3 } from 'three'
 import { BRIDGE, bridgeDeckPoint } from './track'
+import { TOON_RAMP } from './toon'
+import Baked from './Baked'
 
 const PLANKS = 20
 
@@ -41,24 +43,24 @@ export default function Bridge() {
   }, [])
 
   return (
-    <group>
+    <Baked>
       {planks.map((pl, i) => (
         <mesh key={i} position={pl.position} rotation={pl.rotation} castShadow receiveShadow>
           <boxGeometry args={[BRIDGE.width, 0.12, 0.38]} />
-          <meshStandardMaterial color={i % 3 ? '#b07a42' : '#9c6a37'} flatShading roughness={0.9} />
+          <meshToonMaterial color={i % 3 ? '#b07a42' : '#9c6a37'} flatShading gradientMap={TOON_RAMP} />
         </mesh>
       ))}
       {ropes.map((geo, i) => (
         <mesh key={i} geometry={geo} castShadow>
-          <meshStandardMaterial color="#7a5230" roughness={1} />
+          <meshToonMaterial color="#7a5230" gradientMap={TOON_RAMP} />
         </mesh>
       ))}
       {posts.map((p, i) => (
         <mesh key={i} position={p} castShadow>
           <cylinderGeometry args={[0.1, 0.13, 1.6, 6]} />
-          <meshStandardMaterial color="#6e4526" flatShading />
+          <meshToonMaterial color="#6e4526" flatShading gradientMap={TOON_RAMP} />
         </mesh>
       ))}
-    </group>
+    </Baked>
   )
 }

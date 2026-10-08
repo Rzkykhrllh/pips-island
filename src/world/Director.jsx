@@ -1,43 +1,171 @@
-import { useFrame } from '@react-three/fiber'
-import { MathUtils, Vector3 } from 'three'
-import { heightAt, smoothstep } from './terrain'
+import { useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { MathUtils, Spherical, Vector3 } from 'three'
+import { ISLAND, heightAt, smoothstep } from './terrain'
 import { markerU, progressToU, track, trailPoint } from './track'
+import { SPIRES } from './layout'
 import { world } from '../store'
 
-// Turns scroll progress into Pip's position and a chase camera.
+// Turns scroll progress into the runner's position and the camera.
+//
+// The camera works like a film crew rather than a fixed chase cam:
+//  - Each stretch of the trail has its own shot (distance, height, angle round
+//    the runner), blended as you scroll: low and front-on to meet the cat, up
+//    over the canopy in the jungle, wide on the bridge to show the gorge and
+//    the waterfall, pulled back on the climb so the spires fit in.
+//  - The heading it orbits from is smoothed, so switchbacks don't swing it.
+//  - It keeps clear of the ground, the spires, and hills between it and the runner.
+//  - The viewer can swing it round, tilt it and zoom (CameraControls.jsx and
+//    the HUD buttons); that rides on top of whatever shot is playing.
+//  - Where the runner sits on screen (beside the text sign, or above it on
+//    phones) is done with a view offset, which slides the picture without
+//    changing the perspective.
+
+world.pipPos = new Vector3()
+world.pipDir = new Vector3(0, 0, -1)
 
 const UP = new Vector3(0, 1, 0)
-const INTRO_POS = new Vector3(6, 7, 102)
-const INTRO_LOOK = new Vector3(0, 2.5, 46)
+const ISLAND_CENTER = new Vector3(-2, 6, -10)
+const MASSIF = new Vector3(ISLAND.mound.x, 0, ISLAND.mound.z)
 
-const peak = trailPoint(markerU.peak)
-const OUTRO_POS = peak.clone().add(new Vector3(10, 4.5, 9))
-const OUTRO_LOOK = peak.clone().add(new Vector3(0, 1.4, 0))
+// Shots along the trail: [progress, { dist, height, angle, ahead, lookUp, outward }].
+// angle 0 films from the runner's side; positive swings round to its front.
+// outward 1 films from straight out from the massif instead, looking in at it.
+const SHOTS = [
+  [0.1, { dist: 6.5, height: 2.6, angle: 0.95, ahead: 0.4, lookUp: 1, outward: 0 }], // meet the cat, face-on
+  [0.2, { dist: 7.5, height: 4.6, angle: 0.6, ahead: 1, lookUp: 0.9, outward: 0 }], // jungle: over the canopy
+  [0.36, { dist: 7, height: 4, angle: 0.3, ahead: 1, lookUp: 0.9, outward: 0 }], // crates
+  [0.62, { dist: 7, height: 4, angle: 0.3, ahead: 1, lookUp: 0.9, outward: 0 }],
+  [0.7, { dist: 11, height: 4.5, angle: -0.15, ahead: 1.5, lookUp: 0.6, outward: 0 }], // bridge: wide, gorge and waterfall behind
+  [0.82, { dist: 11, height: 5, angle: -0.1, ahead: 1.5, lookUp: 0.8, outward: 0 }],
+  [0.9, { dist: 12, height: 3, angle: 0.45, ahead: 0.5, lookUp: 3.2, outward: 1 }], // the climb, spires in frame
+]
 
-const tangent = new Vector3()
-const side = new Vector3()
-const follow = new Vector3()
-const followLook = new Vector3()
-const desired = new Vector3()
-const desiredLook = new Vector3()
-const look = INTRO_LOOK.clone()
-const forward = new Vector3()
-const right = new Vector3()
+const shot = { dist: 0, height: 0, angle: 0, ahead: 0, lookUp: 0, outward: 0 }
+function shotAt(p) {
+  let i = 1
+  while (i < SHOTS.length - 1 && p > SHOTS[i][0]) i++
+  const [p0, a] = SHOTS[i - 1]
+  const [p1, b] = SHOTS[i]
+  const t = smoothstep(p0, p1, p)
+  for (const k in shot) shot[k] = a[k] + (b[k] - a[k]) * t
+  return shot
+}
 
-// Which side of the screen Pip should sit on, so the text sign never covers him.
-// +1 = Pip on the left (sign on the right), -1 = Pip on the right (sign on the left).
-function framing(p) {
+// Where the runner should sit on screen, as a fraction of the screen.
+// Wide screens: beside the sign (+ = runner on the left, sign on the right).
+function sideFraming(p) {
   const meet = smoothstep(0.1, 0.16, p) * (1 - smoothstep(0.3, 0.35, p))
   const crates = smoothstep(0.3, 0.35, p) * (1 - smoothstep(0.64, 0.68, p))
   const bridge = smoothstep(0.64, 0.68, p) * (1 - smoothstep(0.85, 0.9, p))
   return crates - meet - bridge
 }
 
-export const CAMERA_START = INTRO_POS.toArray()
+const peak = trailPoint(markerU.peak)
+// Summit: from the open south-east side, so the cat stands against the spires and the sunset
+const OUTRO_DIR = new Vector3(0.75, 0, 0.66).normalize()
+
+const spireBases = SPIRES.map((s) => heightAt(s.x, s.z) - 1.5)
+
+// Push a camera position out of the ground and out of any spire
+function keepClear(pos) {
+  pos.y = Math.max(pos.y, heightAt(pos.x, pos.z) + 1.6)
+  SPIRES.forEach((s, i) => {
+    const t = (pos.y - spireBases[i]) / s.height
+    if (t >= 1) return
+    const r = s.radius * 1.2 * (1 - Math.max(0, t)) + 1.5
+    const dx = pos.x - s.x
+    const dz = pos.z - s.z
+    const d = Math.hypot(dx, dz)
+    if (d < r && d > 1e-3) {
+      pos.x = s.x + (dx / d) * r
+      pos.z = s.z + (dz / d) * r
+    }
+  })
+  return pos
+}
+
+// Raise the camera until no hill blocks its view of `target`
+function keepLineOfSight(pos, target) {
+  for (let i = 1; i <= 5; i++) {
+    const t = i / 6
+    const x = pos.x + (target.x - pos.x) * t
+    const z = pos.z + (target.z - pos.z) * t
+    const y = pos.y + (target.y - pos.y) * t
+    const ground = heightAt(x, z) + 0.6
+    if (ground > y) pos.y += (ground - y) / (1 - t)
+  }
+  return pos
+}
+
+const tangent = new Vector3()
+const sample = new Vector3()
+const heading = new Vector3(0, 0, -1) // smoothed trail direction the camera orbits from
+const side = new Vector3()
+const camDir = new Vector3()
+const outDir = new Vector3()
+const follow = new Vector3()
+const followLook = new Vector3()
+const intro = new Vector3()
+const introLook = new Vector3()
+const outro = new Vector3()
+const outroLook = new Vector3()
+const desired = new Vector3()
+const desiredLook = new Vector3()
+const look = ISLAND_CENTER.clone()
+const view = { x: 0, y: 0 } // damped view offset, fractions of the screen
+const orbit = { yaw: 0, pitch: 0, zoom: 1 } // damped copy of world.orbit
+const offset = new Vector3()
+const spherical = new Spherical()
+
+// Trail direction averaged over a long stretch either side of u, so the camera
+// follows the general way the trail goes, not every zigzag
+function smoothTangent(u, target) {
+  target.set(0, 0, 0)
+  for (let k = -3; k <= 3; k++) {
+    track.getTangentAt(MathUtils.clamp(u + k * 0.025, 0, 0.999), sample)
+    target.add(sample)
+  }
+  target.y = 0
+  return target.normalize()
+}
+
+function introShot(t, narrow, target, lookTarget) {
+  // A slow drift round the island, like an idle world map
+  const a = 0.42 + (world.reducedMotion ? 0 : Math.sin(t * 0.07) * 0.12)
+  const r = narrow ? 145 : 104
+  target.set(ISLAND_CENTER.x + Math.sin(a) * r, narrow ? 68 : 50, ISLAND_CENTER.z + Math.cos(a) * r)
+  lookTarget.copy(ISLAND_CENTER)
+}
+
+function outroShot(t, narrow, target, lookTarget) {
+  const sway = world.reducedMotion ? 0 : Math.sin(t * 0.15) * 0.18
+  const dir = camDir.copy(OUTRO_DIR).applyAxisAngle(UP, sway)
+  const dist = narrow ? 13 : 9.5
+  target.copy(peak).addScaledVector(dir, dist)
+  target.y = peak.y + (narrow ? 5 : 3.6)
+  keepClear(target)
+  lookTarget.copy(world.pipPos).addScaledVector(UP, 1.3)
+}
+
+export const CAMERA_START = (() => {
+  introShot(0, false, intro, introLook)
+  return intro.toArray()
+})()
 
 export default function Director() {
-  useFrame(({ camera, size }, rawDt) => {
+  const camera = useThree((s) => s.camera)
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  useEffect(() => () => camera.clearViewOffset(), [camera])
+  // Dev only: poke at the camera, renderer and scene from the console
+  useEffect(() => {
+    if (import.meta.env.DEV) window.__island = { world, camera, gl, scene, heading, look }
+  }, [camera, gl, scene])
+
+  useFrame(({ camera, size, clock }, rawDt) => {
     const dt = Math.min(rawDt, 0.05)
+    const t = clock.elapsedTime
     const lambda = world.reducedMotion ? 30 : 3.5
     world.progress = MathUtils.damp(world.progress, world.target, lambda, dt)
     const p = world.progress
@@ -53,36 +181,71 @@ export default function Director() {
     tangent.normalize()
     world.pipDir.copy(tangent)
 
-    // Side cam, slightly ahead of Pip, so we see his face as he runs toward the summit.
-    side.crossVectors(tangent, UP).normalize()
     const narrow = size.width / size.height < 0.8
-    const reach = narrow ? 1.55 : 1 // portrait screens need more distance to fit Pip in
+
+    // Follow shot
+    smoothTangent(u, sample)
+    const turn = 1 - Math.exp(-(world.reducedMotion ? 30 : 2.5) * dt)
+    heading.lerp(sample, turn).normalize()
+    side.crossVectors(heading, UP).normalize()
+    const s = shotAt(p)
+    const reach = narrow ? 1.35 : 1
+    camDir.copy(side).multiplyScalar(Math.cos(s.angle)).addScaledVector(heading, Math.sin(s.angle))
+    if (s.outward > 0) {
+      outDir.subVectors(world.pipPos, MASSIF).setY(0).normalize()
+      camDir.lerp(outDir, s.outward).normalize()
+    }
+    followLook.copy(world.pipPos).addScaledVector(heading, s.ahead).addScaledVector(UP, s.lookUp)
     follow
       .copy(world.pipPos)
-      .addScaledVector(tangent, 1.6 * reach)
-      .addScaledVector(side, 3.6 * reach)
-      .add(UP.clone().multiplyScalar(1.6 * reach))
-    // Never let the camera dip into a hillside.
-    follow.y = Math.max(follow.y, heightAt(follow.x, follow.z) + 1.3, world.pipPos.y + 1.1)
-    followLook.copy(world.pipPos).addScaledVector(tangent, 0.5).add(UP.clone().multiplyScalar(0.7))
+      .addScaledVector(camDir, s.dist * reach)
+      .addScaledVector(UP, s.height * reach)
+    keepLineOfSight(keepClear(follow), followLook)
 
-    // Shift the look target sideways so Pip sits beside the sign. On narrow screens
-    // the sign sits at the bottom, so lift Pip into the upper half instead.
-    forward.subVectors(followLook, follow).normalize()
-    right.crossVectors(forward, UP).normalize()
-    if (narrow) followLook.y -= 1.1
-    else followLook.addScaledVector(right, framing(p) * 1.5)
+    introShot(t, narrow, intro, introLook)
+    outroShot(t, narrow, outro, outroLook)
 
-    const intro = smoothstep(0, 0.1, p)
-    const outro = smoothstep(0.9, 1, p)
-    desired.lerpVectors(INTRO_POS, follow, intro).lerp(OUTRO_POS, outro)
-    desiredLook.lerpVectors(INTRO_LOOK, followLook, intro).lerp(OUTRO_LOOK, outro)
-    if (narrow) desiredLook.y += 2.2 * outro // keep Pip below the summit sign
+    // Blend the three: map -> follow -> summit
+    const toFollow = smoothstep(0.02, 0.11, p)
+    const toOutro = smoothstep(0.88, 0.98, p)
+    desired.lerpVectors(intro, follow, toFollow).lerp(outro, toOutro)
+    desiredLook.lerpVectors(introLook, followLook, toFollow).lerp(outroLook, toOutro)
 
-    const k = 1 - Math.exp(-(world.reducedMotion ? 30 : 5) * dt)
-    camera.position.lerp(desired, k)
-    look.lerp(desiredLook, k)
+    // The viewer's own orbit, around whatever the shot is looking at
+    const kOrbit = 1 - Math.exp(-(world.reducedMotion ? 30 : 7) * dt)
+    orbit.yaw += (world.orbit.yaw - orbit.yaw) * kOrbit
+    orbit.pitch += (world.orbit.pitch - orbit.pitch) * kOrbit
+    orbit.zoom += (world.orbit.zoom - orbit.zoom) * kOrbit
+    spherical.setFromVector3(offset.subVectors(desired, desiredLook))
+    spherical.theta += orbit.yaw
+    spherical.phi = MathUtils.clamp(spherical.phi - orbit.pitch, 0.2, 1.5)
+    spherical.radius *= orbit.zoom
+    desired.copy(desiredLook).add(offset.setFromSpherical(spherical))
+    keepLineOfSight(keepClear(desired), desiredLook)
+
+    const kPos = 1 - Math.exp(-(world.reducedMotion ? 30 : 4) * dt)
+    const kLook = 1 - Math.exp(-(world.reducedMotion ? 30 : 6) * dt)
+    camera.position.lerp(desired, kPos)
+    look.lerp(desiredLook, kLook)
     camera.lookAt(look)
+
+    // Screen framing. Hero and summit: the island / runner sits below the
+    // title or sign. Signs: beside them on wide screens, above them on phones.
+    const hero = 1 - toFollow
+    const signs = toFollow * (1 - toOutro)
+    let vx = 0
+    let vy = -0.1 * hero - (narrow ? 0.12 : 0.16) * toOutro
+    if (narrow) vy += 0.2 * signs * smoothstep(0.08, 0.14, p)
+    else vx = sideFraming(p) * 0.2
+    const kView = 1 - Math.exp(-(world.reducedMotion ? 30 : 3) * dt)
+    view.x += (vx - view.x) * kView
+    view.y += (vy - view.y) * kView
+
+    const fov = narrow ? 58 : 50
+    if (camera.fov !== fov) camera.fov = fov
+    const w = size.width
+    const h = size.height
+    camera.setViewOffset(w, h, view.x * w, view.y * h, w, h) // also updates the projection
   })
   return null
 }

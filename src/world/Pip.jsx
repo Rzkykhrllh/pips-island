@@ -1,10 +1,12 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MathUtils } from 'three'
-import { world } from '../store'
+import { uiStore, world } from '../store'
+import { TOON_RAMP } from './toon'
+import { dampAngle } from './math'
 
 // Pip: an original sprout spirit built from primitives.
-// Swap this whole component for a rigged GLB later; keep the same useFrame logic.
+// The default runner is the cat (Cat.jsx); Pip is still here behind ?char=pip.
 
 const COLORS = {
   body: '#3fcfae',
@@ -14,23 +16,16 @@ const COLORS = {
   cheek: '#ff8fa3',
 }
 
-const dampAngle = (current, target, lambda, dt) => {
-  let diff = (target - current) % (Math.PI * 2)
-  if (diff > Math.PI) diff -= Math.PI * 2
-  if (diff < -Math.PI) diff += Math.PI * 2
-  return current + diff * (1 - Math.exp(-lambda * dt))
-}
-
 function Eye({ x }) {
   return (
     <group position={[x, 0.1, 0.42]}>
       <mesh scale={[1, 1.15, 0.6]}>
         <sphereGeometry args={[0.12, 16, 12]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.3} />
+        <meshToonMaterial color="#ffffff" gradientMap={TOON_RAMP} />
       </mesh>
       <mesh position={[0, -0.01, 0.05]} scale={[1, 1.2, 0.6]}>
         <sphereGeometry args={[0.07, 14, 10]} />
-        <meshStandardMaterial color="#1c2b33" roughness={0.2} />
+        <meshToonMaterial color="#1c2b33" gradientMap={TOON_RAMP} />
       </mesh>
       <mesh position={[0.025, 0.035, 0.1]}>
         <sphereGeometry args={[0.022, 8, 6]} />
@@ -41,6 +36,7 @@ function Eye({ x }) {
 }
 
 export default function Pip() {
+  useEffect(() => uiStore.set({ ready: true }), [])
   const root = useRef()
   const body = useRef()
   const eyes = useRef()
@@ -115,11 +111,11 @@ export default function Pip() {
       <group ref={body}>
         <mesh castShadow scale={[0.5, 0.47, 0.46]}>
           <sphereGeometry args={[1, 28, 20]} />
-          <meshStandardMaterial color={COLORS.body} roughness={0.55} />
+          <meshToonMaterial color={COLORS.body} gradientMap={TOON_RAMP} />
         </mesh>
         <mesh position={[0, -0.08, 0.26]} scale={[0.33, 0.3, 0.22]}>
           <sphereGeometry args={[1, 20, 14]} />
-          <meshStandardMaterial color={COLORS.belly} roughness={0.6} />
+          <meshToonMaterial color={COLORS.belly} gradientMap={TOON_RAMP} />
         </mesh>
         <group ref={eyes}>
           <Eye x={-0.16} />
@@ -128,42 +124,42 @@ export default function Pip() {
         {[-0.3, 0.3].map((x) => (
           <mesh key={x} position={[x, -0.04, 0.34]} scale={[1, 0.6, 0.4]}>
             <sphereGeometry args={[0.06, 10, 8]} />
-            <meshStandardMaterial color={COLORS.cheek} roughness={0.8} />
+            <meshToonMaterial color={COLORS.cheek} gradientMap={TOON_RAMP} />
           </mesh>
         ))}
         {/* Sprout on top */}
         <group ref={leaf} position={[0, 0.44, 0]}>
           <mesh position={[0, 0.08, 0]}>
             <cylinderGeometry args={[0.025, 0.035, 0.18, 6]} />
-            <meshStandardMaterial color="#5aa83c" />
+            <meshToonMaterial color="#5aa83c" gradientMap={TOON_RAMP} />
           </mesh>
           <mesh position={[-0.13, 0.19, 0]} rotation={[0, 0, 0.6]} scale={[0.17, 0.06, 0.1]} castShadow>
             <sphereGeometry args={[1, 12, 8]} />
-            <meshStandardMaterial color={COLORS.leaf} flatShading />
+            <meshToonMaterial color={COLORS.leaf} flatShading gradientMap={TOON_RAMP} />
           </mesh>
           <mesh position={[0.13, 0.21, 0]} rotation={[0, 0, -0.5]} scale={[0.19, 0.06, 0.11]} castShadow>
             <sphereGeometry args={[1, 12, 8]} />
-            <meshStandardMaterial color={COLORS.leaf} flatShading />
+            <meshToonMaterial color={COLORS.leaf} flatShading gradientMap={TOON_RAMP} />
           </mesh>
         </group>
         {/* Arms pivot at the shoulder */}
         <group ref={armL} position={[0.45, 0, 0]}>
           <mesh position={[0, -0.12, 0]} castShadow>
             <capsuleGeometry args={[0.07, 0.14, 4, 8]} />
-            <meshStandardMaterial color={COLORS.body} roughness={0.55} />
+            <meshToonMaterial color={COLORS.body} gradientMap={TOON_RAMP} />
           </mesh>
         </group>
         <group ref={armR} position={[-0.45, 0, 0]}>
           <mesh position={[0, -0.12, 0]} castShadow>
             <capsuleGeometry args={[0.07, 0.14, 4, 8]} />
-            <meshStandardMaterial color={COLORS.body} roughness={0.55} />
+            <meshToonMaterial color={COLORS.body} gradientMap={TOON_RAMP} />
           </mesh>
         </group>
       </group>
       {[footL, footR].map((ref, i) => (
         <mesh key={i} ref={ref} position={[i ? -0.18 : 0.18, 0.07, 0]} scale={[0.13, 0.08, 0.19]} castShadow>
           <sphereGeometry args={[1, 12, 8]} />
-          <meshStandardMaterial color={COLORS.feet} roughness={0.6} />
+          <meshToonMaterial color={COLORS.feet} gradientMap={TOON_RAMP} />
         </mesh>
       ))}
     </group>

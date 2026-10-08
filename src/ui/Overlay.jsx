@@ -1,28 +1,30 @@
-import { useState } from 'react'
-import { useUi } from '../store'
+import { nudgeCamera, resetCamera, useUi } from '../store'
+import { STOPS } from '../sections'
 
+// Landing page for N. Usantara Island, the playable portfolio in web-3d-project.
 // Section heights (in viewport heights) are tuned to world/track.js TIMELINE.
 // If you change one, nudge the other so text and island stay in sync.
 
+const GAME_URL = 'https://game.byairu.com/island'
+const PORTFOLIO_URL = 'https://dev.byairu.com'
+
 const FEATURES = [
-  { title: 'Hand-built islands', body: 'Every island is laid out by hand, so every path leads somewhere worth going.' },
-  { title: 'Bouncy, readable jumps', body: 'Pip always lands where you expect. Mistakes are yours, never the camera’s.' },
-  { title: 'Secrets in every corner', body: 'Crates, caves and hidden ledges. Some shards only show up at sunset.' },
-  { title: 'Plays in your browser', body: 'No install, no launcher. Open a link and you’re on the beach.' },
+  {
+    title: 'Crates with a temper',
+    body: 'TNT lights a three-second fuse, Nitro goes off at a touch, bounce crates fling you skyward.',
+  },
+  { title: 'Crabs on patrol', body: 'Stomp them or spin straight through them. They will not apologise either way.' },
+  {
+    title: 'A temple full of fire',
+    body: 'Rolling logs, fire jets on a beat and a lift to the top of the temple, where the green gem waits.',
+  },
+  { title: 'Plays anywhere', body: 'Keyboard or a thumb stick, right in the browser. The graphics adapt to your device.' },
 ]
 
-const ROADMAP = [
-  { when: 'Now', what: 'Playable prototype: one island and one very determined sprout.' },
-  { when: 'Spring 2027', what: 'Free browser demo with the first three islands.' },
-  { when: 'Late 2027', what: 'Chapter one: eight islands, a boss fight, and far more crates.' },
-]
-
-const STOPS = [
-  { label: 'Beach', p: 0 },
-  { label: 'Jungle', p: 0.17 },
-  { label: 'Crates', p: 0.36 },
-  { label: 'Bridge', p: 0.72 },
-  { label: 'Summit', p: 1 },
+const NEXT = [
+  { when: 'Now', what: 'One full level: jungle, chasms, the Fire Temple and a warp pad at the end.' },
+  { when: 'Next', what: 'A tiki mask that takes a hit for you, and a boulder chase with the camera turned around.' },
+  { when: 'Later', what: 'A warp room with short levels for projects, experience and skills, plus time trials.' },
 ]
 
 function jumpTo(p) {
@@ -32,19 +34,20 @@ function jumpTo(p) {
 }
 
 function Hud() {
-  const shards = useUi((s) => s.shards)
+  const crates = useUi((s) => s.crates)
   return (
     <>
       <a className="hud-logo" href="#top" onClick={(e) => (e.preventDefault(), jumpTo(0))}>
-        Pip’s Island
+        N. Usantara
       </a>
-      <div className="hud-shards" aria-live="polite">
-        <span className="shard-icon" aria-hidden="true" />
+      <div className="hud-crates" aria-live="polite">
+        <span className="crate-icon" aria-hidden="true" />
         <span>
-          {shards} / {FEATURES.length}
-          <span className="visually-hidden"> sun shards found</span>
+          {crates} / {FEATURES.length}
+          <span className="visually-hidden"> crates broken</span>
         </span>
       </div>
+      <CameraButtons />
       <nav className="hud-trail" aria-label="Jump along the trail">
         {STOPS.map((s) => (
           <button key={s.label} type="button" onClick={() => jumpTo(s.p)}>
@@ -57,45 +60,58 @@ function Hud() {
   )
 }
 
-function Waitlist() {
-  const [email, setEmail] = useState('')
-  const [joined, setJoined] = useState(false)
-
-  const submit = (e) => {
-    e.preventDefault()
-    // TODO: send `email` to your backend or a waitlist service.
-    setJoined(true)
-  }
-
-  if (joined) {
-    return (
-      <p className="joined" role="status">
-        You’re on the waitlist. We’ll send one email when the demo is ready.
-      </p>
-    )
-  }
-
+// Buttons for the same moves as drag and pinch, for keyboards and anyone who
+// doesn't think to drag the island
+function CameraButtons() {
+  const orbited = useUi((s) => s.orbited)
+  const ready = useUi((s) => s.ready)
+  if (!ready) return null
+  const turn = Math.PI / 6
   return (
-    <form className="waitlist" onSubmit={submit}>
-      <label htmlFor="email" className="visually-hidden">
-        Email address
-      </label>
-      <input
-        id="email"
-        type="email"
-        required
-        placeholder="you@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        autoComplete="email"
-      />
-      <button type="submit">Join the waitlist</button>
-    </form>
+    <div className="hud-camera" role="group" aria-label="Camera">
+      <button type="button" onClick={() => nudgeCamera({ yaw: turn })} aria-label="Turn camera left">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 7H4V3M4.6 7a9 9 0 1 1-.9 7" />
+        </svg>
+      </button>
+      <button type="button" onClick={() => nudgeCamera({ yaw: -turn })} aria-label="Turn camera right">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 7h4V3M19.4 7a9 9 0 1 0 .9 7" />
+        </svg>
+      </button>
+      <button type="button" onClick={() => nudgeCamera({ zoom: 0.8 })} aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+      <button type="button" onClick={() => nudgeCamera({ zoom: 1.25 })} aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12h14" />
+        </svg>
+      </button>
+      {orbited && (
+        <button type="button" className="reset" onClick={resetCamera}>
+          Reset view
+        </button>
+      )}
+    </div>
+  )
+}
+
+function Loading() {
+  const ready = useUi((s) => s.ready)
+  const noScene = useUi((s) => s.noScene)
+  if (noScene) return null
+  return (
+    <p className={`loading${ready ? ' done' : ''}`} role="status">
+      <span className="crate-spin" aria-hidden="true" />
+      {ready ? 'The island is ready' : 'Loading the island…'}
+    </p>
   )
 }
 
 export default function Overlay() {
-  const shards = useUi((s) => s.shards)
+  const crates = useUi((s) => s.crates)
 
   return (
     <>
@@ -103,24 +119,29 @@ export default function Overlay() {
       <main id="top" className="overlay">
         <section className="sec sec-hero" style={{ '--h': 100 }}>
           <div className="hero">
-            <p className="hero-kicker">Pip Studio presents</p>
+            <p className="hero-kicker">A playable portfolio by Airu</p>
             <h1 className="hero-title">
-              <span>Pip’s</span> <span>Island</span>
+              <span>N. Usantara</span> <span>Island</span>
             </h1>
-            <p className="hero-sub">A tiny sprout spirit and one very big island. Scroll to follow Pip to the top.</p>
+            <p className="hero-sub">Smash crates. Find my work. Watch out for TNT.</p>
+            <a className="play" href={GAME_URL}>
+              Play now
+            </a>
+            <Loading />
             <span className="scroll-cue" aria-hidden="true" />
+            <p className="hero-hint">Scroll to follow the cat · drag the island to look around</p>
           </div>
         </section>
 
         <section className="sec" style={{ '--h': 150 }}>
           <div className="pin pin-left">
             <article className="sign">
-              <h2>This is Pip.</h2>
+              <h2>Meet the cat.</h2>
               <p>
-                Pip woke up on the beach this morning with sand in his leaves and no idea how he got here. The only way
-                to find out is up: through the jungle, over the canyon, all the way to the summit.
+                Red Hawaiian shirt, a gold ring with a green gem, sandals, and somewhere to be. Straight up the island:
+                through the jungle, over the gorge, all the way to the summit.
               </p>
-              <p className="muted">He runs as fast as you scroll. Scroll back and he’ll turn around.</p>
+              <p className="muted">It runs as fast as you scroll. Scroll back and it turns around.</p>
             </article>
           </div>
         </section>
@@ -128,13 +149,14 @@ export default function Overlay() {
         <section className="sec" style={{ '--h': 250 }}>
           <div className="pin pin-right">
             <article className="sign">
-              <h2>Break crates, find shards</h2>
+              <h2>Smash every crate</h2>
               <p>
-                Every crate on the trail hides a sun shard. Pip has found {shards} of {FEATURES.length} so far.
+                In the game, every crate holds fruit and some hold a piece of my work. Here, each one opens a feature.
+                Broken so far: {crates} of {FEATURES.length}.
               </p>
               <ul className="features">
                 {FEATURES.map((f, i) => {
-                  const found = i < shards
+                  const found = i < crates
                   return (
                     <li key={f.title} className={found ? 'found' : 'locked'}>
                       <span className="feature-icon" aria-hidden="true" />
@@ -153,16 +175,16 @@ export default function Overlay() {
         <section className="sec" style={{ '--h': 150 }}>
           <div className="pin pin-left">
             <article className="sign">
-              <h2>The road ahead</h2>
+              <h2>Coming to the island</h2>
               <ol className="roadmap">
-                {ROADMAP.map((r) => (
+                {NEXT.map((r) => (
                   <li key={r.when}>
                     <span className="when">{r.when}</span>
                     <span>{r.what}</span>
                   </li>
                 ))}
               </ol>
-              <p className="muted">Dates are targets, not promises. Pip is still learning to jump.</p>
+              <p className="muted">Built from scratch with Three.js, one crate at a time.</p>
             </article>
           </div>
         </section>
@@ -172,9 +194,16 @@ export default function Overlay() {
         <section className="sec sec-summit" style={{ '--h': 100 }}>
           <div className="summit">
             <h2>You made it to the top.</h2>
-            <p>Get one email when the demo is ready to play. Nothing else.</p>
-            <Waitlist />
-            <footer>© 2026 Pip Studio</footer>
+            <p>The real island is waiting. Bring a keyboard or a thumb.</p>
+            <div className="summit-actions">
+              <a className="play" href={GAME_URL}>
+                Play N. Usantara Island
+              </a>
+              <a className="plain" href={PORTFOLIO_URL} target="_blank" rel="noopener">
+                Engineering portfolio ↗
+              </a>
+            </div>
+            <footer>Made by Airu · Software Engineer, Tokyo</footer>
           </div>
         </section>
       </main>
