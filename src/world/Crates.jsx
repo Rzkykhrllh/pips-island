@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { BoxGeometry, CanvasTexture, MeshToonMaterial, SRGBColorSpace, Vector3 } from 'three'
+import { BoxGeometry, BufferAttribute, CanvasTexture, Color, MeshToonMaterial, SRGBColorSpace, SphereGeometry, Vector3 } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { CRATE_PROGRESS, progressToU, trailPoint } from './track'
 import { BONUS_CRATES } from './layout'
 import { toast, uiStore, world } from '../store'
@@ -76,20 +77,28 @@ function useCrateAssets() {
   )
 }
 
-// The fruit inside each crate, as in the game
-function Fruit() {
-  return (
-    <group>
-      <mesh castShadow scale={[1, 0.9, 1]}>
-        <sphereGeometry args={[0.2, 12, 10]} />
-        <meshToonMaterial color="#ff7a2f" gradientMap={TOON_RAMP} emissive="#ff5a00" emissiveIntensity={0.25} />
-      </mesh>
-      <mesh position={[0.05, 0.2, 0]} rotation-z={-0.6} scale={[1, 0.35, 0.6]}>
-        <sphereGeometry args={[0.12, 8, 6]} />
-        <meshToonMaterial color="#4cbf3e" gradientMap={TOON_RAMP} />
-      </mesh>
-    </group>
+// The fruit inside each crate, as in the game: an orange with a leaf, merged
+// into one mesh with vertex colours so each fruit is a single draw call
+function fruitGeometry() {
+  const paint = (geo, color) => {
+    const g = geo.toNonIndexed()
+    const c = new Color(color)
+    const n = g.attributes.position.count
+    g.setAttribute('color', new BufferAttribute(new Float32Array(n * 3).map((_, i) => [c.r, c.g, c.b][i % 3]), 3))
+    return g
+  }
+  const body = paint(new SphereGeometry(0.2, 10, 8).scale(1, 0.9, 1), '#ff7a2f')
+  const leaf = paint(
+    new SphereGeometry(0.12, 8, 6).scale(1, 0.35, 0.6).rotateZ(-0.6).translate(0.05, 0.2, 0),
+    '#4cbf3e',
   )
+  return mergeGeometries([body, leaf])
+}
+const FRUIT_GEO = fruitGeometry()
+const FRUIT_MAT = new MeshToonMaterial({ vertexColors: true, gradientMap: TOON_RAMP, emissive: '#ff5a00', emissiveIntensity: 0.15 })
+
+function Fruit() {
+  return <mesh geometry={FRUIT_GEO} material={FRUIT_MAT} />
 }
 
 const pay = (n) => uiStore.set({ fruit: uiStore.get().fruit + n })
@@ -224,7 +233,7 @@ function Crate({ home, index, assets, trailU = null, kind = 'trail', where }) {
         <mesh geometry={assets.box} material={OUTLINE} scale={1.08} />
       </group>
       {Array.from({ length: PIECES }, (_, i) => (
-        <mesh key={i} ref={(m) => (pieces.current[i] = m)} geometry={assets.piece} material={material} visible={false} castShadow />
+        <mesh key={i} ref={(m) => (pieces.current[i] = m)} geometry={assets.piece} material={material} visible={false} />
       ))}
       {Array.from({ length: fruitCount }, (_, i) => (
         <group key={i} ref={(f) => (fruits.current[i] = f)}>

@@ -70,9 +70,14 @@ cat out and flares into the game.
 Camera: the scroll drives a cinematic shot per section, and the viewer can
 orbit on top of it: drag the island (sideways only on touch, so vertical swipes
 still scroll), pinch or ctrl+wheel to zoom, the round buttons bottom-right, or
-double-click to reset. Plain wheel scrolling always scrolls the page.
+double-click to reset, Q / E to turn. Plain wheel scrolling always scrolls
+the page. The "?" button lists every control.
 
-Performance notes: static props are baked into single meshes, trees, clouds and
+Performance notes: two lights only (hemisphere + sun; fires and lava glow
+with additive sprites), shadows redrawn every other frame from a short list
+of casters, one shared wind shader, shaders compiled before the fade-in,
+DPR capped at 1.5 and no MSAA on dense screens, small details off on the low
+tier. Static props are baked into single meshes, trees, clouds and
 puffs are instanced, the cat model is simplified to ~18k triangles for the page,
 the ocean grid is dense only near the island, and three.js / React ship as
 separate long-cached chunks loaded in parallel with the runner's model.

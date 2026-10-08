@@ -309,13 +309,13 @@ function SunShafts() {
   )
 }
 
-export default function Effects() {
+export default function Effects({ lite = false }) {
   return (
     <>
       <WarpBeam />
       <Glows />
       <Rainbow />
-      <SunShafts />
+      {!lite && <SunShafts />}
     </>
   )
 }

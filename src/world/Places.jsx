@@ -42,17 +42,6 @@ function Flame({ position, size = 1 }) {
   )
 }
 
-// A warm light that wavers with the flames, brighter as the evening comes
-function FireLight({ position }) {
-  const light = useRef()
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    const flicker = world.reducedMotion ? 1 : 0.85 + Math.sin(t * 11) * 0.08 + Math.sin(t * 23.7) * 0.07
-    light.current.intensity = (25 + world.progress * 40) * flicker
-  })
-  return <pointLight ref={light} position={position} color="#ff9a40" distance={14} decay={2} />
-}
-
 function Campfire() {
   const { x, z } = CAMPFIRE
   const y = groundAt(x, z)
@@ -85,7 +74,6 @@ function Campfire() {
         ))}
       </Baked>
       <Flame position={[x, y + 0.1, z]} />
-      <FireLight position={[x, y + 1.2, z]} />
       <Puffs at={new Vector3(x, y + 1.1, z)} count={6} color="#9a938c" rise={4.5} spread={0.8} size={0.45} period={3.5} />
     </>
   )
@@ -230,7 +218,6 @@ function Ruins() {
           <Toon color="#6d6455" />
         </mesh>
       </Baked>
-      {/* Flame only: every point light costs every lit material, so just the campfire and the lava get one */}
       <Flame position={[0, 1.6, 0]} size={0.8} />
     </group>
   )

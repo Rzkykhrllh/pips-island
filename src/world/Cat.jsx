@@ -105,7 +105,7 @@ useLoader.preload(GLTFLoader, catUrl, withMeshopt)
 
 export default function Cat() {
   const gltf = useLoader(GLTFLoader, catUrl, withMeshopt)
-  useEffect(() => uiStore.set({ ready: true }), [])
+  useEffect(() => uiStore.set({ runner: true }), [])
   useCatKeys()
   const gl = useThree((s) => s.gl)
   const root = useRef()
@@ -240,7 +240,8 @@ export default function Cat() {
           ~18k skinned triangles on every pointer move would be slow */}
       <mesh position-y={0.75} onClick={onClick} onPointerOver={hover(true)} onPointerOut={hover(false)}>
         <boxGeometry args={[0.9, 1.5, 0.9]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+        {/* Not drawn at all, but still hit by the pointer */}
+        <meshBasicMaterial visible={false} />
       </mesh>
       <group ref={body}>
         <group scale={scale} position-y={lift}>

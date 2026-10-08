@@ -152,8 +152,6 @@ function Ocean() {
         vertexColors
         flatShading
         gradientMap={TOON_RAMP}
-        transparent
-        opacity={0.93}
         onBeforeCompile={onBeforeCompile}
       />
     </mesh>

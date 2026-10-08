@@ -24,12 +24,13 @@ export const world = {
 }
 
 // Tiny external store for the few values the HTML overlay cares about.
-// crates: broken so far; ready: the 3D scene has its runner loaded;
+// crates: broken so far; runner: the cat (or Pip) has loaded; ready: and the
+// scene's shaders are compiled, so it can fade in without a stutter;
 // orbited: the viewer has moved the camera away from the default shot;
 // noScene: no WebGL, or the scene failed to load (the page carries on without it);
 // fruit: collected from crates; bonusFound / bonusTotal: hidden "?" crates;
 // toast: a short message for the HUD ({ text, id })
-let ui = { crates: 0, ready: false, orbited: false, noScene: false, fruit: 0, bonusFound: 0, bonusTotal: 0, toast: null }
+let ui = { crates: 0, runner: false, ready: false, orbited: false, noScene: false, fruit: 0, bonusFound: 0, bonusTotal: 0, toast: null }
 const listeners = new Set()
 export const uiStore = {
   get: () => ui,

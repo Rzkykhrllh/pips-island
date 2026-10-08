@@ -7,6 +7,7 @@ import { nudgeCamera, resetCamera } from '../store'
 //  - drag with one finger: swing round; vertical swipes still scroll the page
 //  - pinch, or ctrl + wheel (also what a trackpad pinch sends): zoom
 //  - plain wheel: scrolls the page as usual
+//  - Q / E: turn left / right
 //  - double-click: back to the director's shot
 export default function CameraControls() {
   const el = useThree((s) => s.gl.domElement)
@@ -54,6 +55,13 @@ export default function CameraControls() {
       nudgeCamera({ zoom: Math.exp(e.deltaY * 0.01) })
     }
 
+    const key = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) return
+      const k = e.key.toLowerCase()
+      if (k === 'q') nudgeCamera({ yaw: Math.PI / 8 })
+      else if (k === 'e') nudgeCamera({ yaw: -Math.PI / 8 })
+    }
+    window.addEventListener('keydown', key)
     el.addEventListener('pointerdown', down)
     el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up)
@@ -61,6 +69,7 @@ export default function CameraControls() {
     el.addEventListener('wheel', wheel, { passive: false })
     el.addEventListener('dblclick', resetCamera)
     return () => {
+      window.removeEventListener('keydown', key)
       el.removeEventListener('pointerdown', down)
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)

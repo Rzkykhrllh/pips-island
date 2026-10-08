@@ -36,7 +36,7 @@ function Eye({ x }) {
 }
 
 export default function Pip() {
-  useEffect(() => uiStore.set({ ready: true }), [])
+  useEffect(() => uiStore.set({ runner: true }), [])
   const root = useRef()
   const body = useRef()
   const eyes = useRef()

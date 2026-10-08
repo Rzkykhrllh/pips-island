@@ -135,40 +135,73 @@ function SoundButton() {
 
 // Buttons for the same moves as drag and pinch, for keyboards and anyone who
 // doesn't think to drag the island
+// Every way to play, in one card behind the "?" button
+const CONTROLS = [
+  ['Scroll, swipe, ← → or A D', 'Follow the trail (Shift runs)'],
+  ['Click the cat, K or X', 'Spin'],
+  ['J', 'Jump'],
+  ['Click or tap a crate', 'Smash it. Six hidden "?" crates are out there'],
+  ['Drag the island, Q E', 'Look around'],
+  ['Pinch, Ctrl + scroll, + −', 'Zoom'],
+  ['Double-click', 'Back to the default view'],
+]
+
+function ControlsCard({ onClose }) {
+  useEffect(() => {
+    const key = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [onClose])
+  return (
+    <div className="controls-card" role="dialog" aria-label="How to play">
+      <h2>How to play</h2>
+      <dl>
+        {CONTROLS.map(([keys, what]) => (
+          <div key={keys}>
+            <dt>{keys}</dt>
+            <dd>{what}</dd>
+          </div>
+        ))}
+      </dl>
+      <button type="button" className="plain" onClick={onClose}>
+        Got it
+      </button>
+    </div>
+  )
+}
+
+// Sound, zoom, how-to-play and (once the view has moved) reset. Turning is
+// drag or Q / E, so it doesn't need buttons of its own.
 function CameraButtons() {
   const orbited = useUi((s) => s.orbited)
   const ready = useUi((s) => s.ready)
+  const [help, setHelp] = useState(false)
   if (!ready) return null
-  const turn = Math.PI / 6
   return (
-    <div className="hud-camera" role="group" aria-label="Camera and sound">
-      <SoundButton />
-      <button type="button" onClick={() => nudgeCamera({ yaw: turn })} className="cam-move" aria-label="Turn camera left">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M8 7H4V3M4.6 7a9 9 0 1 1-.9 7" />
-        </svg>
-      </button>
-      <button type="button" onClick={() => nudgeCamera({ yaw: -turn })} className="cam-move" aria-label="Turn camera right">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M16 7h4V3M19.4 7a9 9 0 1 0 .9 7" />
-        </svg>
-      </button>
-      <button type="button" onClick={() => nudgeCamera({ zoom: 0.8 })} className="cam-move" aria-label="Zoom in">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
-      <button type="button" onClick={() => nudgeCamera({ zoom: 1.25 })} className="cam-move" aria-label="Zoom out">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 12h14" />
-        </svg>
-      </button>
-      {orbited && (
-        <button type="button" className="reset" onClick={resetCamera}>
-          Reset view
+    <>
+      {help && <ControlsCard onClose={() => setHelp(false)} />}
+      <div className="hud-camera" role="group" aria-label="Camera and sound">
+        {orbited && (
+          <button type="button" className="reset" onClick={resetCamera}>
+            Reset view
+          </button>
+        )}
+        <SoundButton />
+        <button type="button" onClick={() => nudgeCamera({ zoom: 1.25 })} className="cam-move" aria-label="Zoom out">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14" />
+          </svg>
         </button>
-      )}
-    </div>
+        <button type="button" onClick={() => nudgeCamera({ zoom: 0.8 })} className="cam-move" aria-label="Zoom in">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        <button type="button" className="help" onClick={() => setHelp(!help)} aria-expanded={help} aria-label="How to play">
+          ?
+        </button>
+      </div>
+    </>
   )
 }
 
@@ -202,17 +235,10 @@ export default function Overlay() {
               Play now
             </a>
             <Loading />
-            <span className="scroll-cue" aria-hidden="true" />
             <p className="hero-hint">
-              Scroll to follow the cat · drag the island to look around · click crates (and the cat)
-              <span className="keys">
-                <br />
-                <kbd>←</kbd>
-                <kbd>→</kbd> or <kbd>A</kbd>
-                <kbd>D</kbd> walk (<kbd>Shift</kbd> to run) · <kbd>K</kbd> spin · <kbd>J</kbd> jump
-              </span>{' '}
-              · six hidden crates to find
+              Scroll<span className="keys"> or use ← →</span> to explore · click crates to smash them
             </p>
+            <span className="scroll-cue" aria-hidden="true" />
           </div>
         </section>
 

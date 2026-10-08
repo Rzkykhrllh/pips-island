@@ -13,6 +13,7 @@ import Life from './Life'
 import Places from './Places'
 import Vegetation from './Vegetation'
 import { ORDER, PINNED, TIERS, createFpsWatch, guessTier } from './quality'
+import { uiStore, useUi } from '../store'
 import { CHARACTER } from '../sections'
 import ErrorBoundary from '../ErrorBoundary'
 
@@ -36,30 +37,63 @@ function AdaptiveQuality({ tier, onDrop }) {
   return null
 }
 
+// Compile every shader before the island fades in, off the main thread where
+// the browser can, so the opening shot doesn't stutter while programs build
+function Warmup() {
+  const runner = useUi((s) => s.runner)
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    if (!runner) return
+    let done = false
+    const ready = () => {
+      if (done) return
+      done = true
+      uiStore.set({ ready: true })
+    }
+    const fallback = setTimeout(ready, 4000) // never hold the page hostage
+    Promise.resolve(gl.compileAsync?.(scene, camera))
+      .catch(() => {})
+      .then(ready)
+    return () => clearTimeout(fallback)
+  }, [runner, gl, scene, camera])
+  return null
+}
+
 export default function Experience() {
   const [tier, setTier] = useState(guessTier)
   const q = TIERS[tier]
+  // Fixed at creation (WebGL can't switch antialiasing later). Dense screens
+  // don't need MSAA on top of their pixels
+  const [glOptions] = useState(() => ({
+    antialias: tier !== 'low' && (window.devicePixelRatio || 1) < 1.5,
+    toneMapping: ACESFilmicToneMapping,
+    toneMappingExposure: 1.05,
+    powerPreference: 'high-performance',
+  }))
   return (
     <Canvas
       className="stage"
       shadows={q.shadows ? 'percentage' : false}
       dpr={Math.min(window.devicePixelRatio || 1, q.dpr)}
       camera={{ position: CAMERA_START, fov: 50, near: 0.1, far: 1500 }}
-      gl={{ antialias: tier !== 'low', toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.05, powerPreference: 'high-performance' }}
+      gl={glOptions}
       aria-hidden="true"
     >
       <AdaptiveQuality tier={tier} onDrop={setTier} />
+      <Warmup />
       <Director />
       <CameraControls />
       <Atmosphere shadowMap={q.shadowMap} />
       <Island />
       <Landmarks />
       <Places />
-      <Vegetation />
+      <Vegetation lite={tier === 'low'} />
       <Bridge />
       <Crates />
-      <Life />
-      <Effects />
+      {tier !== 'low' && <Life />}
+      <Effects lite={tier === 'low'} />
       {/* If the cat's model can't load, Pip runs instead */}
       <ErrorBoundary
         fallback={

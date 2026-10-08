@@ -36,17 +36,18 @@ function glowTexture() {
 // Lighting follows the climb: bright late morning on the beach, golden
 // afternoon over the crates and the bridge, sunset at the summit. Each key
 // sets the sun's height and colour, the sky, the ambient (hemisphere) light,
-// a cool fill from the far side so shadows never go dead, and the exposure.
+// and the exposure. The hemisphere's sky colour cools toward dusk, which does
+// the job of a fill light (one light fewer for every pixel to shade).
 const KEYS = [
-  [0.0, { elev: 0.75, sun: '#fff4dc', sunI: 2.4, sky: '#dff4ff', ground: '#6b8f4e', hemiI: 1.1, fill: '#bfe3ff', fillI: 0.35, top: '#3fb8f0', bottom: '#d9f5ff', exposure: 1.05 }],
-  [0.4, { elev: 0.55, sun: '#fff0d2', sunI: 2.6, sky: '#e6f2ff', ground: '#6f8a4a', hemiI: 1.05, fill: '#b8d8ff', fillI: 0.4, top: '#3aa8ea', bottom: '#e3f2ff', exposure: 1.05 }],
-  [0.72, { elev: 0.34, sun: '#ffd49a', sunI: 2.5, sky: '#ffe9cf', ground: '#7a7448', hemiI: 0.95, fill: '#a8b8ff', fillI: 0.55, top: '#4b8fe0', bottom: '#ffd9a8', exposure: 1.08 }],
-  [1.0, { elev: 0.15, sun: '#ff9550', sunI: 2.4, sky: '#d2b0ff', ground: '#6a4c58', hemiI: 0.8, fill: '#8f9cff', fillI: 0.75, top: '#5a4fb8', bottom: '#ffb37a', exposure: 1.12 }],
+  [0.0, { elev: 0.75, sun: '#fff4dc', sunI: 2.4, sky: '#dff4ff', ground: '#6b8f4e', hemiI: 1.25, top: '#3fb8f0', bottom: '#d9f5ff', exposure: 1.05 }],
+  [0.4, { elev: 0.55, sun: '#fff0d2', sunI: 2.6, sky: '#e6f2ff', ground: '#6f8a4a', hemiI: 1.2, top: '#3aa8ea', bottom: '#e3f2ff', exposure: 1.05 }],
+  [0.72, { elev: 0.34, sun: '#ffd49a', sunI: 2.5, sky: '#ffe9cf', ground: '#7a7448', hemiI: 1.15, top: '#4b8fe0', bottom: '#ffd9a8', exposure: 1.08 }],
+  [1.0, { elev: 0.15, sun: '#ff9550', sunI: 2.4, sky: '#d2b0ff', ground: '#6a4c58', hemiI: 1.05, top: '#5a4fb8', bottom: '#ffb37a', exposure: 1.12 }],
 ]
-const COLOR_KEYS = ['sun', 'sky', 'ground', 'fill', 'top', 'bottom']
+const COLOR_KEYS = ['sun', 'sky', 'ground', 'top', 'bottom']
 for (const [, k] of KEYS) for (const c of COLOR_KEYS) k[c] = new Color(k[c])
 
-const light = Object.fromEntries([...COLOR_KEYS.map((c) => [c, new Color()]), ['elev', 0], ['sunI', 0], ['hemiI', 0], ['fillI', 0], ['exposure', 1]])
+const light = Object.fromEntries([...COLOR_KEYS.map((c) => [c, new Color()]), ['elev', 0], ['sunI', 0], ['hemiI', 0], ['exposure', 1]])
 function lightAt(p) {
   let i = 1
   while (i < KEYS.length - 1 && p > KEYS[i][0]) i++
@@ -166,7 +167,7 @@ function Clouds() {
     for (let i = 0; i < 14; i++) {
       const a = i * 2.39
       const r = 10 + (i % 5) * 7
-      out.push({ cloud: 12 + i, x: 32 + Math.cos(a) * r, y: 96 + (i % 4) * 4, z: 18 + Math.sin(a) * r, s: 5 + (i % 3) * 2 })
+      out.push({ cloud: 12 + i, x: 32 + Math.cos(a) * r, y: 96 + (i % 4) * 4, z: 18 + Math.sin(a) * r, s: 5 + (i % 3) * 2, deck: true })
     }
     return out
   }, [])
@@ -175,11 +176,14 @@ function Clouds() {
 
   useFrame((_, dt) => {
     if (!world.reducedMotion) drift.current += dt * 1.2
+    // The deck melts away once the opening shot is through it, so it never
+    // crowds the sky above the title
+    const deck = 1 - smoothstep(0.55, 0.9, world.intro)
     puffs.forEach((p, i) => {
       // Wraps far out in the fog, where nobody sees a cloud split for a moment
       const x = ((p.x + drift.current + 170) % 340) - 170
       dummy.position.set(x, p.y, p.z)
-      dummy.scale.setScalar(p.s)
+      dummy.scale.setScalar(p.deck ? Math.max(0.0001, p.s * deck) : p.s)
       dummy.updateMatrix()
       mesh.current.setMatrixAt(i, dummy.matrix)
     })
@@ -198,7 +202,6 @@ export default function Atmosphere({ shadowMap = 2048 }) {
   const scene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)
   const sun = useRef()
-  const fill = useRef()
   const hemi = useRef()
   const disc = useRef()
   const face = useRef()
@@ -219,7 +222,17 @@ export default function Atmosphere({ shadowMap = 2048 }) {
     shadow.map = null
   }, [shadowMap])
 
+  // Shadows are redrawn every other frame: half the shadow pass, and at 30 Hz
+  // nobody can tell
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => (gl.shadowMap.autoUpdate = true)
+  }, [gl])
+  const frame = useRef(0)
+
   useFrame(({ camera }) => {
+    if (++frame.current % 2 === 0) gl.shadowMap.needsUpdate = true
     const p = world.progress
     const l = lightAt(p)
     sunDirAt(l.elev)
@@ -249,9 +262,6 @@ export default function Atmosphere({ shadowMap = 2048 }) {
     s.color.copy(l.sun)
     s.intensity = l.sunI
 
-    fill.current.position.set(-SUN_DIR.x, 0.5, -SUN_DIR.z)
-    fill.current.color.copy(l.fill)
-    fill.current.intensity = l.fillI
 
     hemi.current.color.copy(l.sky)
     hemi.current.groundColor.copy(l.ground)
@@ -275,8 +285,6 @@ export default function Atmosphere({ shadowMap = 2048 }) {
         shadow-camera-near={1}
         shadow-camera-far={320}
       />
-      {/* Cool fill from the far side; no shadows */}
-      <directionalLight ref={fill} />
       <group ref={disc}>
         <mesh ref={face}>
           <circleGeometry args={[16, 32]} />

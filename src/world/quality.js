@@ -4,8 +4,8 @@
 
 export const TIERS = {
   low: { dpr: 1, shadows: false, shadowMap: 1024 },
-  medium: { dpr: 1.5, shadows: true, shadowMap: 1024 },
-  high: { dpr: 1.75, shadows: true, shadowMap: 2048 }, // past 1.75 the extra pixels cost more than they show
+  medium: { dpr: 1.25, shadows: true, shadowMap: 1024 },
+  high: { dpr: 1.5, shadows: true, shadowMap: 2048 }, // past 1.5 the extra pixels cost more than they show
 }
 export const ORDER = ['low', 'medium', 'high']
 

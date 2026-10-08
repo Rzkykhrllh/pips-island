@@ -42,10 +42,10 @@ const leaf = (width, length) => {
 const PARTS = {
   trunk: { geo: new CylinderGeometry(0.13, 0.22, 1, 6).translate(0, 0.5, 0), wind: { perHeight: 0.05 } },
   frond: { geo: leaf(0.42, 2.6), wind: { base: 0.2, flutter: 0.04 } },
-  coconut: { geo: new IcosahedronGeometry(0.2, 0), wind: { base: 0.2 } },
+  coconut: { geo: new IcosahedronGeometry(0.2, 0), wind: { base: 0.2 }, shadow: false },
   crown: { geo: new IcosahedronGeometry(1, 0), wind: { base: 0.1, perHeight: 0.03 } },
-  bush: { geo: new IcosahedronGeometry(1, 0), wind: { perHeight: 0.06 } },
-  spike: { geo: new ConeGeometry(0.16, 1.1, 4).translate(0, 0.55, 0), wind: { perHeight: 0.12 } },
+  bush: { geo: new IcosahedronGeometry(1, 0), wind: { perHeight: 0.06 }, shadow: false },
+  spike: { geo: new ConeGeometry(0.16, 1.1, 4).translate(0, 0.55, 0), wind: { perHeight: 0.12 }, shadow: false },
   fern: { geo: leaf(0.2, 1.1), wind: { base: 0.03, flutter: 0.02 }, shadow: false },
   blade: { geo: new ConeGeometry(0.07, 0.8, 3).translate(0, 0.4, 0), wind: { perHeight: 0.35 }, shadow: false },
   stem: { geo: new CylinderGeometry(0.02, 0.02, 0.55, 3).translate(0, 0.275, 0), wind: { perHeight: 0.3 }, shadow: false },
@@ -57,7 +57,7 @@ const PARTS = {
   rock: { geo: new DodecahedronGeometry(1, 0) },
   shell: { geo: new ConeGeometry(0.12, 0.16, 6).translate(0, 0.05, 0), shadow: false },
   starfish: { geo: new OctahedronGeometry(0.16, 0).scale(1, 0.25, 1), shadow: false },
-  log: { geo: new CylinderGeometry(0.14, 0.17, 1, 6).rotateZ(Math.PI / 2) },
+  log: { geo: new CylinderGeometry(0.14, 0.17, 1, 6).rotateZ(Math.PI / 2), shadow: false },
 }
 
 const hex = (list) => list.map((c) => new Color(c))
@@ -187,7 +187,7 @@ function useForest() {
       push('stem', root, at(zero), stemGreen)
       push('bloom', root, at(zero), pick(rand, blooms))
     }
-    for (let i = 0, tries = 0; i < 900 && tries < 12000; tries++) {
+    for (let i = 0, tries = 0; i < 620 && tries < 9000; tries++) {
       const [x, z] = scatter(150)
       const y = groundAt(x, z)
       if (y < 0.9 || y > 7 || slopeAt(x, z) > 0.8) continue
@@ -291,14 +291,19 @@ function Instanced({ part, items }) {
   )
 }
 
-export default function Vegetation() {
+// Small decorative parts left out on the low quality tier
+const DETAIL = new Set(['blade', 'stem', 'bloom', 'fern', 'cap', 'capStem', 'shell', 'starfish', 'bambooLeaf'])
+
+export default function Vegetation({ lite = false }) {
   const parts = useForest()
   useFrame((_, dt) => {
     if (!world.reducedMotion) WIND_TIME.value += Math.min(dt, 0.05)
   })
   return (
     <>
-      {Object.entries(parts).map(([key, items]) => (items.length ? <Instanced key={key} part={key} items={items} /> : null))}
+      {Object.entries(parts).map(([key, items]) =>
+        items.length && !(lite && DETAIL.has(key)) ? <Instanced key={key} part={key} items={items} /> : null,
+      )}
     </>
   )
 }

@@ -286,13 +286,9 @@ function Waterfall() {
 }
 
 function Lava() {
-  const glow = useRef()
+  // No point light: it would cost every lit pixel on the island. The glow
+  // sprites in Effects.jsx do the job
   const points = useMemo(() => groundPath(LAVA, 60), [])
-  // Warm light off the vent, flickering a little, stronger as the sun goes down
-  useFrame(({ clock }) => {
-    const flicker = world.reducedMotion ? 1 : 0.9 + Math.sin(clock.elapsedTime * 7.3) * 0.06 + Math.sin(clock.elapsedTime * 3.1) * 0.04
-    glow.current.intensity = (60 + world.progress * 90) * flicker
-  })
   const mouth = points[points.length - 1].clone().setY(0)
   const vent = points[0]
   return (
@@ -303,7 +299,6 @@ function Lava() {
         <circleGeometry args={[1.7, 10]} />
         <meshBasicMaterial color="#ffb02e" toneMapped={false} />
       </mesh>
-      <pointLight ref={glow} position={[vent.x, vent.y + 2.5, vent.z]} color="#ff7a2a" distance={22} decay={2} />
       <Puffs at={mouth} count={8} color="#f4efe8" rise={4} spread={3} size={1.1} period={3.2} />
       <Puffs at={vent.clone().setY(vent.y + 0.5)} count={4} color="#8d817a" rise={3} spread={1.5} size={0.7} period={2.6} />
     </>
@@ -396,7 +391,7 @@ function Palisade() {
   )
   return (
     <>
-      <Instances items={logs} color="#8a5a32">
+      <Instances items={logs} color="#8a5a32" shadow>
         <cylinderGeometry args={[0.28, 0.28, 1, 6]} />
       </Instances>
       <Instances items={tips} color="#b8844f">
@@ -516,7 +511,7 @@ const _e = new Euler()
 
 // One instanced mesh for a list of { pos, rot?, scale? }; extra props go to
 // the material (a wind sway, say)
-export function Instances({ items, color, children, shadow = true, ...material }) {
+export function Instances({ items, color, children, shadow = false, ...material }) {
   const ref = useRef()
   useLayoutEffect(() => {
     const mesh = ref.current
