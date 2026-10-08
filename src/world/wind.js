@@ -9,7 +9,10 @@
 // instance's origin): trunks bend from the ground up (base 0), crowns and
 // fronds ride along at the top of the trunk (a fixed base).
 
-export const WIND_TIME = { value: 0 }
+import { SCENE_TIME } from './clock'
+import { addCloudShade } from './cloudShade'
+
+export const WIND_TIME = SCENE_TIME
 
 export function windSway({ base = 0, perHeight = 0, flutter = 0 }) {
   // The tuning goes in as uniforms, not baked into the source, so every
@@ -38,6 +41,8 @@ export function windSway({ base = 0, perHeight = 0, flutter = 0 }) {
         mvPosition = modelViewMatrix * mvPosition;
         gl_Position = projectionMatrix * mvPosition;`,
       )
+    // Plants darken under the passing cloud shadows like the ground does
+    addCloudShade(shader)
   }
   return { onBeforeCompile, customProgramCacheKey: () => 'wind' }
 }

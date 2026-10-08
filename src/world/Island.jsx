@@ -4,6 +4,7 @@ import { BufferAttribute, Color, PlaneGeometry } from 'three'
 import { ISLAND, TERRAIN_SEGMENTS, ZONES, groundAt, slopeAt, smoothstep, zoneWeight } from './terrain'
 import { trailDistance2 } from './track'
 import { TOON_RAMP } from './toon'
+import { addCloudShade, cloudShaded } from './cloudShade'
 import { world } from '../store'
 
 const PALETTE = {
@@ -80,7 +81,7 @@ function Terrain() {
 
   return (
     <mesh geometry={geometry} receiveShadow>
-      <meshToonMaterial vertexColors flatShading gradientMap={TOON_RAMP} />
+      <meshToonMaterial vertexColors flatShading gradientMap={TOON_RAMP} {...cloudShaded} />
     </mesh>
   )
 }
@@ -122,8 +123,8 @@ function Ocean() {
   const onBeforeCompile = (shader) => {
     shader.uniforms.uTime = uniforms.current.uTime
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nattribute float aDepth;\nvarying float vDepth;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvDepth = aDepth;')
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nattribute float aDepth;\nvarying float vDepth;\nvarying vec2 vSeaXZ;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvDepth = aDepth;\nvSeaXZ = vec2(position.x, -position.y);')
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
@@ -134,7 +135,7 @@ function Ocean() {
     // Foam: a pale band at the waterline that swells and ebbs, with a second,
     // fainter line rolling in from a little further out
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying float vDepth;')
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying float vDepth;\nvarying vec2 vSeaXZ;')
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -142,8 +143,13 @@ function Ocean() {
         float foam = 1.0 - smoothstep(edge - 0.1, edge, vDepth);
         float roll = fract(uTime * 0.18 + vDepth * 0.9); // rolls toward the shore
         foam = max(foam, (1.0 - smoothstep(0.0, 0.06, abs(roll - 0.5))) * (1.0 - smoothstep(0.4, 1.4, vDepth)) * 0.7);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.98, 0.95), foam * step(0.0, vDepth));`,
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.98, 0.95), foam * step(0.0, vDepth));
+        // Sun glints twinkling on open water
+        float glint = sin(vSeaXZ.x * 2.3 + uTime * 1.7) * sin(vSeaXZ.y * 2.9 - uTime * 1.3) * sin((vSeaXZ.x - vSeaXZ.y) * 1.7 + uTime * 0.9);
+        glint = smoothstep(0.8, 0.95, glint) * smoothstep(0.8, 2.5, vDepth);
+        diffuseColor.rgb += vec3(1.0, 0.97, 0.85) * glint * 0.8;`,
       )
+    addCloudShade(shader)
   }
 
   return (

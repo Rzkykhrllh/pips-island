@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { BufferAttribute, Color, Matrix4 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { TOON_RAMP } from './toon'
+import { cloudShaded } from './cloudShade'
 
 // Renders its (static) children once, then folds every mesh in them into a
 // single flat-shaded mesh with the material colours baked into vertex colours.
@@ -40,7 +41,7 @@ export default function Baked({ children, castShadow = true, receiveShadow = tru
   if (geometry) {
     return (
       <mesh geometry={geometry} castShadow={castShadow} receiveShadow={receiveShadow}>
-        <meshToonMaterial vertexColors flatShading gradientMap={TOON_RAMP} />
+        <meshToonMaterial vertexColors flatShading gradientMap={TOON_RAMP} {...cloudShaded} />
       </mesh>
     )
   }

@@ -2,11 +2,12 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { AdditiveBlending, BufferGeometry, Color, DoubleSide, Float32BufferAttribute, Object3D } from 'three'
 import { ZONES, groundAt, smoothstep } from './terrain'
-import { BAMBOO, mulberry32 } from './layout'
+import { BAMBOO, POND, mulberry32 } from './layout'
 import { TOON_RAMP } from './toon'
 import { world } from '../store'
 
-// Small things that move: butterflies over the meadow by day, fireflies in
+// Small things that move: butterflies over the meadow and dragonflies over
+// the pond by day, fireflies in
 // the jungle and the meadow as the sun goes down. Each is one instanced mesh.
 
 // Two wings meeting at the body; flapping squashes them toward the body line
@@ -27,13 +28,26 @@ function Butterflies() {
   const flock = useMemo(() => {
     const rand = mulberry32(44)
     const { meadow } = ZONES
-    return Array.from({ length: 16 }, () => {
+    const butterflies = Array.from({ length: 16 }, (_, i) => {
       const a = rand() * Math.PI * 2
       const r = Math.sqrt(rand()) * meadow.radius * 0.8
       const x = meadow.x + Math.cos(a) * r
       const z = meadow.z + Math.sin(a) * r
-      return { x, z, y: groundAt(x, z), seed: rand() * 100, wander: 1.5 + rand() * 2, speed: 0.4 + rand() * 0.4 }
+      const color = BUTTERFLY_COLORS[i % BUTTERFLY_COLORS.length]
+      return { x, z, y: groundAt(x, z), seed: rand() * 100, wander: 1.5 + rand() * 2, speed: 0.4 + rand() * 0.4, color, flap: 14 }
     })
+    // Dragonflies darting low over the pond: quicker, tighter, blue-green
+    const dragonflies = Array.from({ length: 4 }, (_, i) => ({
+      x: POND.x + (rand() - 0.5) * 4,
+      z: POND.z + (rand() - 0.5) * 4,
+      y: POND.water - 0.3,
+      seed: rand() * 100,
+      wander: 1 + rand(),
+      speed: 1.1 + rand() * 0.5,
+      color: ['#2fc4c0', '#3a7bd5'][i % 2],
+      flap: 30,
+    }))
+    return [...butterflies, ...dragonflies]
   }, [])
 
   useFrame(({ clock }) => {
@@ -47,7 +61,7 @@ function Butterflies() {
       dummy.position.set(x, b.y + 0.8 + Math.sin(s * 3.1) * 0.35 + Math.abs(Math.sin(t * 9 + i)) * 0.1, z)
       // Face the way it's drifting
       dummy.rotation.set(0, Math.atan2(Math.cos(s) * b.wander, -Math.sin(s * 0.8) * 0.8 * b.wander), 0)
-      const flap = Math.abs(Math.sin(t * 14 + i * 1.7))
+      const flap = Math.abs(Math.sin(t * b.flap + i * 1.7))
       dummy.scale.set(0.25 + flap * 0.85, 1, 1).multiplyScalar(day * 1.3)
       dummy.updateMatrix()
       mesh.current.setMatrixAt(i, dummy.matrix)
@@ -55,12 +69,12 @@ function Butterflies() {
     mesh.current.instanceMatrix.needsUpdate = true
   })
 
-  const colors = useMemo(() => BUTTERFLY_COLORS.map((c) => new Color(c)), [])
+  const colors = useMemo(() => flock.map((b) => new Color(b.color)), [flock])
   return (
     <instancedMesh
       ref={(m) => {
         mesh.current = m
-        if (m && !m.instanceColor) flock.forEach((_, i) => m.setColorAt(i, colors[i % colors.length]))
+        if (m && !m.instanceColor) flock.forEach((_, i) => m.setColorAt(i, colors[i]))
       }}
       args={[geometry, undefined, flock.length]}
       frustumCulled={false}

@@ -49,6 +49,10 @@ src/
     Places.jsx          meadow pond, temple ruins, jetty and rowboat, campfire
     Life.jsx            butterflies by day, fireflies at dusk
     Effects.jsx         warp beam, fire and lava glows, waterfall rainbow, jungle sun shafts
+    Critters.jsx        villagers, beach crabs, leaping fish, sailboats, lava bubbles, petals
+    cloudShade.js       drifting cloud shadows, patched into the ground, sea, rocks and plants
+    paint.js            merge coloured shapes into one geometry (one draw call per figure kind)
+    clock.js            the shared shader clock (wind, cloud shadows)
     wind.js             shared wind sway for everything that grows
     Baked.jsx           folds static JSX props into one mesh (one draw call)
     Vegetation.jsx      zoned planting: beach palms and shells, meadow grass and flowers,

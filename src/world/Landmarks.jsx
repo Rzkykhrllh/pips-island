@@ -34,6 +34,7 @@ import {
 } from './layout'
 import { TOON_RAMP } from './toon'
 import Baked from './Baked'
+import { cloudShaded } from './cloudShade'
 import { world } from '../store'
 
 // The set dressing that makes the island read as a world map: jagged rock
@@ -112,7 +113,7 @@ function Spires() {
   return (
     <>
       <mesh geometry={geometry} castShadow receiveShadow>
-        <Toon vertexColors flatShading />
+        <Toon vertexColors flatShading {...cloudShaded} />
       </mesh>
       <Instances items={tufts} color="#3f9a44">
         <icosahedronGeometry args={[1, 0]} />

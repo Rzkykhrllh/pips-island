@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { advance, useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Spherical, Vector3 } from 'three'
 import { ISLAND, groundAt, smoothstep } from './terrain'
 import { markerU, progressToU, track, trailPoint } from './track'
@@ -178,7 +178,7 @@ export default function Director() {
   useEffect(() => () => camera.clearViewOffset(), [camera])
   // Dev only: poke at the camera, renderer and scene from the console
   useEffect(() => {
-    if (import.meta.env.DEV) window.__island = { world, camera, gl, scene, heading, look }
+    if (import.meta.env.DEV) window.__island = { world, camera, gl, scene, heading, look, advance }
   }, [camera, gl, scene])
 
   useFrame(({ camera, size, clock }, rawDt) => {
