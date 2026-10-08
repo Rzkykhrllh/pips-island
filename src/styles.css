@@ -623,6 +623,7 @@ body.no-scene .scroll-cue {
 }
 .hero-hint kbd {
   display: inline-block;
+  margin: 0 0.06em;
   padding: 0 0.35em;
   border-radius: 4px;
   background: rgba(255, 248, 230, 0.9);

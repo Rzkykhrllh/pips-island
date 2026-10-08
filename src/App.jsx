@@ -3,6 +3,7 @@ import Overlay from './ui/Overlay'
 import ErrorBoundary from './ErrorBoundary'
 import { uiStore, useUi, world } from './store'
 import { CHARACTER } from './sections'
+import { enableWalking } from './walk'
 
 function hasWebGL() {
   try {
@@ -30,6 +31,8 @@ if (WEBGL) {
 const noScene = () => uiStore.set({ noScene: true })
 
 export default function App() {
+  useEffect(enableWalking, [])
+
   useEffect(() => {
     // Page height only changes on resize, so scrolling never forces a layout read
     let max = 1

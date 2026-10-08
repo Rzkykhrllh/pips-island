@@ -30,6 +30,7 @@ Pages, or an nginx container on your own server).
 src/
   App.jsx               scroll listener -> world.target (0..1); lazy-loads the 3D scene
   audio.js              synthesised ambience (surf, wind, birds), toggled from the HUD
+  walk.js               arrows / WASD walk the cat by scrolling the page
   store.js              shared per-frame state + tiny store for the UI (no three.js)
   sections.js           page sections / trail stops (no three.js)
   ui/Overlay.jsx        HTML sections, HUD, Play buttons
@@ -59,7 +60,9 @@ src/
     Atmosphere.jsx      keyed lighting (morning -> sunset), sky, fill light, sun halo, clouds, shadows
 ```
 
-Playing: click or tap any crate to smash it (six hidden "?" crates are spread
+Playing: walk the cat with the arrow keys or WASD (forward heads for the
+summit, Shift to run); the keys scroll the page, so text, camera and cat stay
+in step. Click or tap any crate to smash it (six hidden "?" crates are spread
 round the island), click the cat or press K / X to spin, J to jump. The page
 opens with a dive through the clouds and the cat beaming down; Play warps the
 cat out and flares into the game.

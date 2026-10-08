@@ -207,7 +207,9 @@ export default function Overlay() {
               Scroll to follow the cat · drag the island to look around · click crates (and the cat)
               <span className="keys">
                 <br />
-                <kbd>K</kbd> spin · <kbd>J</kbd> jump
+                <kbd>←</kbd>
+                <kbd>→</kbd> or <kbd>A</kbd>
+                <kbd>D</kbd> walk (<kbd>Shift</kbd> to run) · <kbd>K</kbd> spin · <kbd>J</kbd> jump
               </span>{' '}
               · six hidden crates to find
             </p>
@@ -222,7 +224,9 @@ export default function Overlay() {
                 Red Hawaiian shirt, a gold ring with a green gem, sandals, and somewhere to be. Straight up the island:
                 through the jungle, over the gorge, all the way to the summit.
               </p>
-              <p className="muted">It runs as fast as you scroll. Scroll back and it turns around.</p>
+              <p className="muted">
+                It runs as fast as you scroll, or walk it with the arrow keys or WASD. Go back and it turns around.
+              </p>
             </article>
           </div>
         </section>
